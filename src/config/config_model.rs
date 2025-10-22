@@ -142,6 +142,21 @@ pub struct SecurityConfig {
     pub argon2_parallelism: u32,
 }
 
+impl SecurityConfig {
+    pub fn validate(&self) -> Result<()> {
+        if self.argon2_memory_cost < 1024 {
+            anyhow::bail!("ARGON2_MEMORY_COST too low (<1024 KB)")
+        }
+        if self.argon2_time_cost == 0 {
+            anyhow::bail!("ARGON2_TIME_COST must be > 0")
+        }
+        if self.argon2_parallelism == 0 {
+            anyhow::bail!("ARGON2_PARALLELISM must be > 0")
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ProductionConfig {
     pub https_redirect: bool,
