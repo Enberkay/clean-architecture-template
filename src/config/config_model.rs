@@ -40,9 +40,19 @@ impl Server {
     }
 }
 
+// Database
 #[derive(Debug, Clone)]
 pub struct Database {
     pub url: String,
+}
+
+impl Database {
+    pub fn validate(&self) -> Result<()> {
+        if self.url.is_empty() {
+            anyhow::bail!("DATABASE_URL connot be empty.")
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
