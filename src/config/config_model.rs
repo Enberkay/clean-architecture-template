@@ -3,7 +3,7 @@ use anyhow::Result;
 pub struct AppConfig {
     pub server: Server,
     pub database: Database,
-    pub redis: Reids,
+    pub redis: Redis,
     pub users_secret: UsersSecret,
     pub jwt: JwtConfig,
     pub environment: Environment,
@@ -55,11 +55,27 @@ impl Database {
     }
 }
 
+// Redis
 #[derive(Debug, Clone)]
-pub struct Reids {
+pub struct Redis {
     pub url: String,
     pub max_connections: u32,
     pub refresh_token_expiry_days: u64,
+}
+
+impl Redis {
+    pub fn validate(&self) -> Result<()> {
+        if self.url.is_empty() {
+            anyhow::bail!("REDIS_URL cannot be empty.")
+        }
+        if self.max_connections == 0 {
+            anyhow::bail!("REDIS_MAX_CONNECTIONS must be > 0.")
+        }
+        if self.refresh_token_expiry_days == 0 {
+            anyhow::bail!("REDIS_REFRESH_TOKEN_EXPIRY_DAYS must be > 0.")
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
