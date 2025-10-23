@@ -1,4 +1,4 @@
-use crate::config::config_model::AppConfig;
+use crate::config::config_model::*;
 use anyhow::{Context, Result, anyhow};
 
 pub fn load() -> Result<AppConfig> {
@@ -24,4 +24,22 @@ pub fn load() -> Result<AppConfig> {
             v => Err(anyhow!("Invalid boolean for {}: {}", key, v)),
         }
     }
+
+    // Server
+    let server = Server {
+        port: parse_env("SERVER_PORT")?,
+        body_limit: parse_env("SERVER_BODY_LIMIT")?,
+        timeout_seconds: parse_env("SERVER_TIMEOUT")?,
+        cors_allowed_origins: required_env("SERVER_CORS_ALLOWED_ORIGINS")?
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect(),
+    };
+
+    // Compose full config
+    let config = AppConfig { server };
+
+    config.validate()?;
+    Ok(config)
 }
