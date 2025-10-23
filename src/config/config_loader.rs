@@ -49,11 +49,21 @@ pub fn load() -> Result<AppConfig> {
         refresh_token_expiry_days: parse_env("REDIS_REFRESH_TOKEN_EXPIRY_DAYS")?,
     };
 
+    // JWT
+    let jwt = JwtConfig {
+        access_token_expiry_minutes: parse_env("JWT_ACCESS_TOKEN_EXPIRY_MINUTES")?,
+    };
+
+    // Environment
+    let environment: Environment = required_env("ENVIRONMENT")?.parse()?;
+
     // Compose full config
     let config = AppConfig {
         server,
         database,
         redis,
+        jwt,
+        environment,
     };
 
     config.validate()?;
