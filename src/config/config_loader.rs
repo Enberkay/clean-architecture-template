@@ -65,6 +65,18 @@ pub fn load() -> Result<AppConfig> {
         argon2_parallelism: parse_env("ARGON2_PARALLELISM")?,
     };
 
+    // Production
+    let production = ProductionConfig {
+        https_redirect: parse_bool_env("HTTPS_REDIRECT")?,
+        trust_proxy: parse_bool_env("TRUST_PROXY")?,
+    };
+
+    // Secrets
+    let users_secret = UsersSecret {
+        secret: required_env("JWT_USERS_SECRET")?,
+        refresh_secret: required_env("JWT_USERS_REFRESH_SECRET")?,
+    };
+
     // Compose full config
     let config = AppConfig {
         server,
@@ -73,6 +85,8 @@ pub fn load() -> Result<AppConfig> {
         jwt,
         environment,
         security,
+        production,
+        users_secret,
     };
 
     config.validate()?;
