@@ -196,7 +196,7 @@ CREATE TABLE payments (
 CREATE TABLE receipts (
     id SERIAL PRIMARY KEY,
     receipt_code VARCHAR(50) NOT NULL UNIQUE,              -- e.g. POS-2025-00001, ORD-2025-00001
-    type VARCHAR(20) NOT NULL CHECK (type IN ('SALE', 'ORDER')),
+    type_name VARCHAR(20) NOT NULL,
     reference_id INTEGER NOT NULL,                         -- FK: sales.id or orders.id
     source VARCHAR(50) NOT NULL,                           -- 'POS' or 'ONLINE'
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -210,7 +210,7 @@ CREATE TABLE receipts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_receipts_type ON receipts(type);
+CREATE INDEX idx_receipts_type ON receipts(type_name);
 CREATE INDEX idx_receipts_source ON receipts(source);
 CREATE INDEX idx_receipts_user_id ON receipts(user_id);
 CREATE INDEX idx_receipts_branch_id ON receipts(branch_id);
