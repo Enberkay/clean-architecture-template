@@ -6,6 +6,7 @@ pub mod inventory;
 pub mod order;
 pub mod payment;
 pub mod permission;
+pub mod receipt;
 pub mod role;
 pub mod sale;
 pub mod user;
