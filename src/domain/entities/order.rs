@@ -18,7 +18,7 @@ pub struct OrderEntity {
 pub struct OrderItemEntity {
     pub id: i32,
     pub order_id: i32,
-    pub book_isbn: String, // อาจเปลี่ยนเป็น Isbn13 ได้ภายหลัง
+    pub book_isbn: String,
     pub book_title: String,
     pub book_author: Option<String>,
     pub quantity: i32,
