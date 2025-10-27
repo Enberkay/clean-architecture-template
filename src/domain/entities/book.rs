@@ -1,4 +1,7 @@
-use crate::domain::value_objects::{isbn13::Isbn13, money::Money};
+use crate::domain::{
+    domain_errors::{DomainError, DomainResult},
+    value_objects::{isbn13::Isbn13, money::Money},
+};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -14,6 +17,31 @@ pub struct BookEntity {
 }
 
 impl BookEntity {
+    /// Creates a new book entity.
+    pub fn new(
+        isbn: Isbn13,
+        title: String,
+        author: Option<String>,
+        synopsis: Option<String>,
+        price: Money,
+    ) -> DomainResult<Self> {
+        if title.trim().is_empty() {
+            return Err(DomainError::validation("Book title cannot be empty"));
+        }
+
+        let now = Utc::now();
+        Ok(Self {
+            isbn,
+            title,
+            author,
+            synopsis,
+            price,
+            is_active: true,
+            created_at: now,
+            updated_at: now,
+        })
+    }
+
     pub fn activate(&mut self) {
         self.is_active = true;
         self.updated_at = Utc::now();
@@ -24,18 +52,35 @@ impl BookEntity {
         self.updated_at = Utc::now();
     }
 
-    pub fn update_price(&mut self, new_price: Money) {
+    /// Update book price with validation.
+    pub fn update_price(&mut self, new_price: Money) -> DomainResult<()> {
+        if new_price.value() <= 0.0 {
+            return Err(DomainError::validation("Book price must be greater than zero"));
+        }
         self.price = new_price;
         self.updated_at = Utc::now();
+        Ok(())
     }
 
-    pub fn update_info(&mut self, title: String, author: Option<String>, synopsis: Option<String>) {
+    /// Update general book info.
+    pub fn update_info(
+        &mut self,
+        title: String,
+        author: Option<String>,
+        synopsis: Option<String>,
+    ) -> DomainResult<()> {
+        if title.trim().is_empty() {
+            return Err(DomainError::validation("Book title cannot be empty"));
+        }
+
         self.title = title;
         self.author = author;
         self.synopsis = synopsis;
         self.updated_at = Utc::now();
+        Ok(())
     }
 
+    /// Check if this book is currently available for sale.
     pub fn is_available(&self) -> bool {
         self.is_active
     }

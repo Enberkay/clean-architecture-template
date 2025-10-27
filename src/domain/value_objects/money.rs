@@ -1,3 +1,4 @@
+use crate::domain::domain_errors::{DomainError, DomainResult};
 use std::ops::Mul;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -5,15 +6,15 @@ pub struct Money(f64);
 
 impl Money {
     /// Create a new Money value. Must be >= 0 and finite.
-    pub fn new(value: f64) -> Result<Self, String> {
+    pub fn new(value: f64) -> DomainResult<Self> {
         if !value.is_finite() {
-            return Err("Money must be a finite number".into());
+            return Err(DomainError::validation("Money must be a finite number"));
         }
         if value < 0.0 {
-            return Err("Money cannot be negative".into());
+            return Err(DomainError::validation("Money cannot be negative"));
         }
 
-        // round to 2 decimals for currency precision
+        // Round to 2 decimals for currency precision
         let rounded = (value * 100.0).round() / 100.0;
         Ok(Self(rounded))
     }
@@ -34,10 +35,12 @@ impl Money {
     }
 
     /// Subtract other Money (error if result < 0)
-    pub fn subtract(self, other: Money) -> Result<Money, String> {
+    pub fn subtract(self, other: Money) -> DomainResult<Money> {
         let result = self.0 - other.0;
         if result < 0.0 {
-            return Err("Resulting money cannot be negative".into());
+            return Err(DomainError::validation(
+                "Resulting money cannot be negative",
+            ));
         }
         Ok(Money(result.round_to_2dp()))
     }

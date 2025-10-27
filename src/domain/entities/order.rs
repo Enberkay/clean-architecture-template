@@ -1,4 +1,7 @@
-use crate::domain::value_objects::money::Money;
+use crate::domain::{
+    domain_errors::{DomainError, DomainResult},
+    value_objects::money::Money,
+};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -6,8 +9,8 @@ pub struct OrderEntity {
     pub id: i32,
     pub user_id: Option<i32>,
     pub order_date: DateTime<Utc>,
-    pub status: String, // e.g. PENDING, PAID, SHIPPED
-    pub source: String, // e.g. ONLINE
+    pub status: String, // "PENDING" | "PAID" | "SHIPPED" | "CANCELLED"
+    pub source: String, // "ONLINE" | "POS"
     pub total_amount: Money,
     pub shipping_address: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -15,63 +18,80 @@ pub struct OrderEntity {
 }
 
 impl OrderEntity {
-    /// Create new Order (usually from checkout)
-    pub fn new(user_id: Option<i32>, source: String, shipping_address: Option<String>) -> Self {
+    pub fn new(user_id: Option<i32>, source: String, shipping_address: Option<String>) -> DomainResult<Self> {
+        Self::validate_source(&source)?;
+
         let now = Utc::now();
-        Self {
-            id: 0, // temporary until persistence layer assigns
+        Ok(Self {
+            id: 0,
             user_id,
             order_date: now,
-            status: "PENDING".into(),
-            source,
+            status: "PENDING".to_string(),
+            source: source.to_uppercase(),
             total_amount: Money::zero(),
             shipping_address,
             created_at: now,
             updated_at: now,
-        }
+        })
     }
 
-    /// Mark order as paid
-    pub fn mark_paid(&mut self) {
+    pub fn mark_paid(&mut self) -> DomainResult<()> {
+        if self.status != "PENDING" {
+            return Err(DomainError::validation("Only pending orders can be marked as paid"));
+        }
         self.status = "PAID".into();
         self.updated_at = Utc::now();
+        Ok(())
     }
 
-    /// Mark order as shipped
-    pub fn mark_shipped(&mut self) {
+    pub fn mark_shipped(&mut self) -> DomainResult<()> {
+        if self.status != "PAID" {
+            return Err(DomainError::validation("Only paid orders can be shipped"));
+        }
         self.status = "SHIPPED".into();
         self.updated_at = Utc::now();
+        Ok(())
     }
 
-    /// Cancel order (only if not shipped yet)
-    pub fn cancel(&mut self) -> Result<(), String> {
+    pub fn cancel(&mut self) -> DomainResult<()> {
         if self.status == "SHIPPED" {
-            return Err("Cannot cancel an order that has already been shipped".into());
+            return Err(DomainError::validation("Cannot cancel an order that has already been shipped"));
+        }
+        if self.status == "CANCELLED" {
+            return Err(DomainError::validation("Order is already cancelled"));
         }
         self.status = "CANCELLED".into();
         self.updated_at = Utc::now();
         Ok(())
     }
 
-    /// Update total amount
-    pub fn update_total(&mut self, new_total: Money) {
+    pub fn update_total(&mut self, new_total: Money) -> DomainResult<()> {
+        if new_total.value() < 0.0 {
+            return Err(DomainError::validation("Total amount cannot be negative"));
+        }
         self.total_amount = new_total;
         self.updated_at = Utc::now();
+        Ok(())
     }
 
-    /// Check if order is already paid
-    pub fn is_paid(&self) -> bool {
-        self.status == "PAID"
-    }
-
-    /// Check if order can be shipped
     pub fn can_ship(&self) -> bool {
         self.status == "PAID"
     }
 
-    /// Check if order is cancellable
     pub fn can_cancel(&self) -> bool {
         self.status == "PENDING"
+    }
+
+    pub fn is_paid(&self) -> bool {
+        self.status == "PAID"
+    }
+
+    fn validate_source(source: &str) -> DomainResult<()> {
+        let valid_sources = ["ONLINE", "POS"];
+        if !valid_sources.contains(&source.to_uppercase().as_str()) {
+            return Err(DomainError::validation(format!("Invalid order source: {}", source)));
+        }
+        Ok(())
     }
 }
 
@@ -89,7 +109,6 @@ pub struct OrderItemEntity {
 }
 
 impl OrderItemEntity {
-    /// Create new order item
     pub fn new(
         order_id: i32,
         book_isbn: String,
@@ -97,9 +116,13 @@ impl OrderItemEntity {
         book_author: Option<String>,
         quantity: i32,
         price_at_purchase: Money,
-    ) -> Self {
-        let subtotal = price_at_purchase * quantity as f64;
-        Self {
+    ) -> DomainResult<Self> {
+        if quantity <= 0 {
+            return Err(DomainError::validation("Quantity must be greater than zero"));
+        }
+
+        let subtotal = price_at_purchase.multiply(quantity as u32);
+        Ok(Self {
             id: 0,
             order_id,
             book_isbn,
@@ -109,21 +132,23 @@ impl OrderItemEntity {
             price_at_purchase,
             subtotal,
             created_at: Utc::now(),
-        }
+        })
     }
 
-    /// Update quantity and recalculate subtotal
-    pub fn update_quantity(&mut self, qty: i32) -> Result<(), String> {
+    pub fn update_quantity(&mut self, qty: i32) -> DomainResult<()> {
         if qty <= 0 {
-            return Err("Quantity must be greater than zero".into());
+            return Err(DomainError::validation("Quantity must be greater than zero"));
         }
         self.quantity = qty;
-        self.subtotal = self.price_at_purchase * qty as f64;
+        self.subtotal = self.price_at_purchase.multiply(qty as u32);
         Ok(())
     }
 
-    /// Calculate subtotal explicitly (safety)
     pub fn recalculate_subtotal(&mut self) {
-        self.subtotal = self.price_at_purchase * self.quantity as f64;
+        self.subtotal = self.price_at_purchase.multiply(self.quantity as u32);
+    }
+
+    pub fn subtotal_value(&self) -> f64 {
+        self.subtotal.value()
     }
 }

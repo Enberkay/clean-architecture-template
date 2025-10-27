@@ -1,4 +1,7 @@
-use crate::domain::value_objects::isbn13::Isbn13;
+use crate::domain::{
+    domain_errors::{DomainError, DomainResult},
+    value_objects::isbn13::Isbn13,
+};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -18,17 +21,9 @@ impl BookImageEntity {
         image_url: String,
         image_type: String,
         sort_order: i32,
-    ) -> Result<Self, String> {
-        // Validate image type
-        let valid_types = ["COVER", "PREVIEW", "GALLERY"];
-        if !valid_types.contains(&image_type.to_uppercase().as_str()) {
-            return Err(format!("Invalid image type: {}", image_type));
-        }
-
-        // Basic URL check (not regex-heavy, keep domain-pure)
-        if !image_url.starts_with("http") {
-            return Err("Image URL must start with http or https".into());
-        }
+    ) -> DomainResult<Self> {
+        Self::validate_type(&image_type)?;
+        Self::validate_url(&image_url)?;
 
         Ok(Self {
             id: 0,
@@ -41,20 +36,15 @@ impl BookImageEntity {
     }
 
     /// Update image URL (e.g. when re-uploaded)
-    pub fn update_url(&mut self, new_url: String) -> Result<(), String> {
-        if !new_url.starts_with("http") {
-            return Err("Invalid image URL".into());
-        }
+    pub fn update_url(&mut self, new_url: String) -> DomainResult<()> {
+        Self::validate_url(&new_url)?;
         self.image_url = new_url;
         Ok(())
     }
 
     /// Change image type (e.g. from PREVIEW → GALLERY)
-    pub fn change_type(&mut self, new_type: &str) -> Result<(), String> {
-        let valid_types = ["COVER", "PREVIEW", "GALLERY"];
-        if !valid_types.contains(&new_type.to_uppercase().as_str()) {
-            return Err(format!("Invalid image type: {}", new_type));
-        }
+    pub fn change_type(&mut self, new_type: &str) -> DomainResult<()> {
+        Self::validate_type(new_type)?;
         self.image_type = new_type.to_uppercase();
         Ok(())
     }
@@ -67,5 +57,27 @@ impl BookImageEntity {
     /// Quick check if this image is a cover image
     pub fn is_cover(&self) -> bool {
         self.image_type.eq_ignore_ascii_case("COVER")
+    }
+
+    // ==========================
+    // Internal validators
+    // ==========================
+
+    fn validate_url(url: &str) -> DomainResult<()> {
+        if !(url.starts_with("http://") || url.starts_with("https://")) {
+            return Err(DomainError::validation("Image URL must start with http or https"));
+        }
+        Ok(())
+    }
+
+    fn validate_type(image_type: &str) -> DomainResult<()> {
+        let valid_types = ["COVER", "PREVIEW", "GALLERY"];
+        if !valid_types.contains(&image_type.to_uppercase().as_str()) {
+            return Err(DomainError::validation(format!(
+                "Invalid image type: {}",
+                image_type
+            )));
+        }
+        Ok(())
     }
 }

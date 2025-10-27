@@ -1,19 +1,23 @@
+use crate::domain::domain_errors::{DomainError, DomainResult};
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Isbn13(String);
 
 impl Isbn13 {
     /// Creates a new Isbn13 after validating its format and checksum.
-    pub fn new(value: &str) -> Result<Self, String> {
+    pub fn new(value: &str) -> DomainResult<Self> {
         let trimmed = value.trim().replace("-", ""); // allow with or without '-'
 
         // 1. Must be 13 digits
         if trimmed.len() != 13 || !trimmed.chars().all(|c| c.is_ascii_digit()) {
-            return Err("ISBN-13 must contain exactly 13 digits".into());
+            return Err(DomainError::validation(
+                "ISBN-13 must contain exactly 13 digits",
+            ));
         }
 
         // 2. Validate checksum
         if !Self::is_valid_checksum(&trimmed) {
-            return Err("Invalid ISBN-13 checksum".into());
+            return Err(DomainError::validation("Invalid ISBN-13 checksum"));
         }
 
         Ok(Self(trimmed))

@@ -1,22 +1,26 @@
+use crate::domain::domain_errors::{DomainError, DomainResult};
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmailAddress(String);
 
 impl EmailAddress {
-    pub fn new(value: &str) -> Result<Self, String> {
+    pub fn new(value: &str) -> DomainResult<Self> {
         let trimmed = value.trim();
 
-        // sanity check: at least one '@' and '.' after '@'
-        if let Some(at_index) = trimmed.find('@') {
-            let domain_part = &trimmed[at_index + 1..];
-            if !domain_part.contains('.') {
-                return Err("Email domain must contain '.'".to_string());
-            }
-        } else {
-            return Err("Email must contain '@'".to_string());
+        // Must contain '@'
+        let at_index = trimmed.find('@').ok_or_else(|| {
+            DomainError::validation("Email must contain '@'")
+        })?;
+
+        // Must contain '.' after '@'
+        let domain_part = &trimmed[at_index + 1..];
+        if !domain_part.contains('.') {
+            return Err(DomainError::validation("Email domain must contain '.'"));
         }
 
+        // Must have reasonable length
         if trimmed.len() < 5 {
-            return Err("Email too short".to_string());
+            return Err(DomainError::validation("Email too short"));
         }
 
         Ok(Self(trimmed.to_lowercase()))

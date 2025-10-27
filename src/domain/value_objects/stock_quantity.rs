@@ -1,11 +1,13 @@
+use crate::domain::domain_errors::{DomainError, DomainResult};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StockQuantity(u32);
 
 impl StockQuantity {
     /// Creates a new StockQuantity, ensuring it's non-negative.
-    pub fn new(value: i32) -> Result<Self, String> {
+    pub fn new(value: i32) -> DomainResult<Self> {
         if value < 0 {
-            return Err("Stock quantity cannot be negative".into());
+            return Err(DomainError::validation("Stock quantity cannot be negative"));
         }
         Ok(Self(value as u32))
     }
@@ -21,9 +23,9 @@ impl StockQuantity {
     }
 
     /// Decrease stock safely. Returns Err if insufficient.
-    pub fn decrease(&mut self, amount: u32) -> Result<(), String> {
+    pub fn decrease(&mut self, amount: u32) -> DomainResult<()> {
         if amount > self.0 {
-            return Err("Insufficient stock quantity".into());
+            return Err(DomainError::validation("Insufficient stock quantity"));
         }
         self.0 -= amount;
         Ok(())
