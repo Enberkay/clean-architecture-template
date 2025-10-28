@@ -51,7 +51,6 @@ pub fn load() -> Result<AppConfig> {
 
     // Security
     let security = SecurityConfig {
-        rate_limit_requests_per_minute: parse_env("RATE_LIMIT_REQUESTS_PER_MINUTE")?,
         argon2_memory_cost: parse_env("ARGON2_MEMORY_COST")?,
         argon2_time_cost: parse_env("ARGON2_TIME_COST")?,
         argon2_parallelism: parse_env("ARGON2_PARALLELISM")?,

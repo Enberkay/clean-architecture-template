@@ -32,9 +32,6 @@ impl AppConfig {
                 if self.server.cors_allowed_origins.contains(&"*".to_string()) {
                     anyhow::bail!("CORS cannot allow all origins (*) in production")
                 }
-                if self.security.rate_limit_requests_per_minute > 1000 {
-                    anyhow::bail!("Rate limit too high (>1000 req/min) in production")
-                }
             }
             Environment::Staging => {
                 if self.server.cors_allowed_origins.contains(&"*".to_string()) {
@@ -172,7 +169,6 @@ impl std::str::FromStr for Environment {
 // SecurityConfig
 #[derive(Debug, Clone)]
 pub struct SecurityConfig {
-    pub rate_limit_requests_per_minute: u32,
     pub argon2_memory_cost: u32,
     pub argon2_time_cost: u32,
     pub argon2_parallelism: u32,

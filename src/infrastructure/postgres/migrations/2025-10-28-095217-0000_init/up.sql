@@ -1,5 +1,3 @@
-BEGIN;
-
 -- =====================================================
 -- =============== BRANCH STRUCTURE ====================
 -- =====================================================
@@ -25,7 +23,7 @@ CREATE TABLE users (
     sex VARCHAR(50) NOT NULL,
     phone VARCHAR(20) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    branch_id INTEGER REFERENCES branches(id) ON DELETE SET NULL,  -- Employee ผูกสาขาเดียว
+    branch_id INTEGER REFERENCES branches(id) ON DELETE SET NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -35,7 +33,7 @@ CREATE INDEX idx_users_email ON users(email);
 
 CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,  -- e.g. 'ADMIN', 'EMPLOYEE', 'CUSTOMER'
+    name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -100,7 +98,7 @@ CREATE TABLE book_images (
     id SERIAL PRIMARY KEY,
     book_isbn VARCHAR(13) NOT NULL REFERENCES books(isbn) ON DELETE CASCADE,
     image_url TEXT NOT NULL,
-    image_type VARCHAR(50) NOT NULL DEFAULT 'GALLERY',  -- COVER, PREVIEW, GALLERY
+    image_type VARCHAR(50) NOT NULL DEFAULT 'GALLERY',
     sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -139,7 +137,7 @@ CREATE TABLE orders (
 CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    book_isbn VARCHAR(13) NOT NULL REFERENCES books(isbn) ON DELETE RESTRICT,
+    book_isbn VARCHAR(13) NOT NULL REFERENCES books(isbn),
     book_title VARCHAR(255) NOT NULL,
     book_author VARCHAR(255),
     quantity INTEGER NOT NULL,
@@ -196,10 +194,10 @@ CREATE TABLE payments (
 
 CREATE TABLE receipts (
     id SERIAL PRIMARY KEY,
-    receipt_code VARCHAR(50) NOT NULL UNIQUE,              -- e.g. POS-2025-00001, ORD-2025-00001
+    receipt_code VARCHAR(50) NOT NULL UNIQUE,
     type_name VARCHAR(20) NOT NULL,
-    reference_id INTEGER NOT NULL,                         -- FK: sales.id or orders.id
-    source VARCHAR(50) NOT NULL,                           -- 'POS' or 'ONLINE'
+    reference_id INTEGER NOT NULL,
+    source VARCHAR(50) NOT NULL,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     branch_id INTEGER REFERENCES branches(id) ON DELETE SET NULL,
     total_amount DECIMAL(10,2) NOT NULL,
@@ -217,4 +215,4 @@ CREATE INDEX idx_receipts_user_id ON receipts(user_id);
 CREATE INDEX idx_receipts_branch_id ON receipts(branch_id);
 CREATE INDEX idx_receipts_issued_at ON receipts(issued_at);
 
-COMMIT;
+
