@@ -1,5 +1,7 @@
 use crate::domain::domain_errors::{DomainError, DomainResult};
 use std::ops::Mul;
+use bigdecimal::BigDecimal;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Money(f64);
@@ -48,6 +50,21 @@ impl Money {
     /// Multiply by a scalar (e.g. quantity)
     pub fn multiply(self, qty: u32) -> Money {
         Money((self.0 * qty as f64).round_to_2dp())
+    }
+
+    /// Convert from BigDecimal to Money
+    pub fn from_bigdecimal(value: &BigDecimal) -> DomainResult<Self> {
+        let f = value
+            .to_string()
+            .parse::<f64>()
+            .map_err(|_| DomainError::validation("Invalid BigDecimal conversion"))?;
+        Money::new(f)
+    }
+
+    /// Convert Money to BigDecimal (rounded to 2 decimal places)
+    pub fn to_bigdecimal(&self) -> BigDecimal {
+        let s = format!("{:.2}", self.value());
+        BigDecimal::from_str(&s).expect("Failed to convert Money to BigDecimal")
     }
 }
 
