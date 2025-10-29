@@ -1,14 +1,10 @@
 use chrono::{DateTime, Utc};
-use diesel::{Identifiable, Insertable, Queryable, Selectable};
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
-use crate::{
-    infrastructure::postgres::schema::branches,
-    domain::entities::branch::BranchEntity,
-};
+use crate::domain::entities::branch::BranchEntity;
 
-#[derive(Debug, Clone, Queryable, Insertable, Identifiable, Selectable)]
-#[diesel(table_name = branches)]
-#[diesel(primary_key(id))]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct BranchModel {
     pub id: i32,
     pub name: String,
