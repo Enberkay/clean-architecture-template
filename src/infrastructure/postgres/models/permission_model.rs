@@ -1,18 +1,14 @@
 use chrono::{DateTime, Utc};
-use diesel::{Identifiable, Insertable, Queryable, Selectable};
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
-use crate::{
-    infrastructure::postgres::schema::permissions,
-    domain::entities::permission::PermissionEntity,
-};
+use crate::domain::entities::permission::PermissionEntity;
 
 // ======================
-// PermissionModel
+// PermissionModel (SQLx)
 // ======================
 
-#[derive(Debug, Clone, Queryable, Insertable, Identifiable, Selectable)]
-#[diesel(table_name = permissions)]
-#[diesel(primary_key(id))]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct PermissionModel {
     pub id: i32,
     pub name: String,
