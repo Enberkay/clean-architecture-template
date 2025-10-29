@@ -3,6 +3,7 @@ use crate::domain::{
     value_objects::money::Money,
 };
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 
 #[derive(Debug, Clone)]
 pub struct OrderEntity {
@@ -66,7 +67,7 @@ impl OrderEntity {
     }
 
     pub fn update_total(&mut self, new_total: Money) -> DomainResult<()> {
-        if new_total.value() < 0.0 {
+        if new_total.value() < Decimal::ZERO {
             return Err(DomainError::validation("Total amount cannot be negative"));
         }
         self.total_amount = new_total;
@@ -148,7 +149,8 @@ impl OrderItemEntity {
         self.subtotal = self.price_at_purchase.multiply(self.quantity as u32);
     }
 
-    pub fn subtotal_value(&self) -> f64 {
+    /// Return subtotal value as Decimal
+    pub fn subtotal_value(&self) -> Decimal {
         self.subtotal.value()
     }
 }

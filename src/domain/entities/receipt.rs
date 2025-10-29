@@ -3,6 +3,7 @@ use crate::domain::{
     value_objects::{money::Money, receipt_code::ReceiptCode},
 };
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 
 #[derive(Debug, Clone)]
 pub struct ReceiptEntity {
@@ -36,7 +37,7 @@ impl ReceiptEntity {
     ) -> DomainResult<Self> {
         Self::validate_type(&type_name)?;
         Self::validate_source(&source)?;
-        if total_amount.value() <= 0.0 {
+        if total_amount.value() <= Decimal::ZERO {
             return Err(DomainError::validation("Total amount must be greater than zero"));
         }
 
@@ -88,11 +89,11 @@ impl ReceiptEntity {
     /// Simple string summary
     pub fn summary(&self) -> String {
         format!(
-            "{} [{}] - {} - {:.2} {}",
+            "{} [{}] - {} - {} {}",
             self.receipt_code.as_str(),
             self.type_name,
             self.status,
-            self.total_amount.value(),
+            self.total_amount.value(), // Decimal implements Display
             self.payment_method.clone().unwrap_or_else(|| "N/A".into())
         )
     }
@@ -127,7 +128,7 @@ impl ReceiptEntity {
     pub fn validate(&self) -> DomainResult<()> {
         Self::validate_type(&self.type_name)?;
         Self::validate_source(&self.source)?;
-        if self.total_amount.value() <= 0.0 {
+        if self.total_amount.value() <= Decimal::ZERO {
             return Err(DomainError::validation("Total amount must be greater than zero"));
         }
         Ok(())

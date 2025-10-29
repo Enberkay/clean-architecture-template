@@ -2,18 +2,18 @@ use std::sync::Arc;
 
 use bookstore_backend::{
     config::config_loader,
-    infrastructure::{ axum_http::http_serve::start_server, postgres::postgres_connector},
+    infrastructure::{axum_http::http_serve::start_server, postgres::postgres_connector},
 };
 use tracing::{error, info};
 
 #[tokio::main]
 async fn main() {
-    //Load environment variables from .env
+    // Load environment variables from .env
     if let Err(e) = dotenvy::dotenv() {
         eprintln!("Warning: Couldn't load .env file: {}", e);
     }
 
-    //Initialize structured tracing logger
+    // Initialize structured tracing logger
     tracing_subscriber::fmt()
         .with_target(false)
         .with_level(true)
@@ -21,7 +21,7 @@ async fn main() {
         .compact()
         .init();
 
-    //Load environment configuration
+    // Load environment configuration
     let app_config = match config_loader::load() {
         Ok(config) => {
             info!("Environment variables loaded successfully");
@@ -33,8 +33,8 @@ async fn main() {
         }
     };
 
-    //Connect to Postgres
-    let pg_pool = match postgres_connector::establish_connection(&app_config.database.url) {
+    // Connect to Postgres (async)
+    let pg_pool = match postgres_connector::establish_connection(&app_config.database.url).await {
         Ok(pool) => {
             info!("PostgreSQL connection pool established");
             pool
@@ -45,7 +45,7 @@ async fn main() {
         }
     };
 
-    //Start the HTTP server
+    // Start the HTTP server
     info!(
         "Starting Bookstore backend on port {}...",
         app_config.server.port

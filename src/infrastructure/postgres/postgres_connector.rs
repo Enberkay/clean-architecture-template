@@ -1,13 +1,11 @@
-use anyhow::Result;
-use diesel::{
-    prelude::*,
-    r2d2::{ConnectionManager, Pool},
-};
+use anyhow::{Context, Result};
+use sqlx::PgPool;
 
-pub type PgPoolSquad = Pool<ConnectionManager<PgConnection>>;
+pub type PgPoolSquad = PgPool;
 
-pub fn establish_connection(database_url: &str) -> Result<PgPoolSquad> {
-    let manager = ConnectionManager::<PgConnection>::new(database_url);
-    let pool = Pool::builder().build(manager)?;
+pub async fn establish_connection(database_url: &str) -> Result<PgPoolSquad> {
+    let pool = PgPool::connect(database_url)
+        .await
+        .context("Failed to create database pool")?;
     Ok(pool)
 }

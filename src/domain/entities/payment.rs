@@ -3,6 +3,7 @@ use crate::domain::{
     value_objects::money::Money,
 };
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 
 #[derive(Debug, Clone)]
 pub struct PaymentEntity {
@@ -26,7 +27,7 @@ impl PaymentEntity {
         amount: Money,
     ) -> DomainResult<Self> {
         Self::validate_method(&payment_method)?;
-        if amount.value() <= 0.0 {
+        if amount.value() <= Decimal::ZERO {
             return Err(DomainError::validation("Payment amount must be greater than zero"));
         }
 
@@ -81,7 +82,7 @@ impl PaymentEntity {
     /// Validate payment data invariants
     pub fn validate(&self) -> DomainResult<()> {
         Self::validate_method(&self.payment_method)?;
-        if self.amount.value() <= 0.0 {
+        if self.amount.value() <= Decimal::ZERO {
             return Err(DomainError::validation("Payment amount must be greater than zero"));
         }
         Ok(())
@@ -102,16 +103,14 @@ impl PaymentEntity {
         self.status.eq_ignore_ascii_case("REFUNDED")
     }
 
-    /// Display a short summary
+    /// Display a short summary (for logging or debug)
     pub fn summary(&self) -> String {
         format!(
-            "[{}] {} {:.2} ({})",
+            "[{}] {} {} ({})",
             self.status,
             self.payment_method,
-            self.amount.value(),
-            self.transaction_ref
-                .clone()
-                .unwrap_or_else(|| "no-ref".into())
+            self.amount.value(), // Decimal implements Display
+            self.transaction_ref.clone().unwrap_or_else(|| "no-ref".into())
         )
     }
 
@@ -121,7 +120,10 @@ impl PaymentEntity {
     fn validate_method(method: &str) -> DomainResult<()> {
         let valid_methods = ["CASH", "CREDIT_CARD", "PROMPTPAY", "BANK_TRANSFER"];
         if !valid_methods.contains(&method.to_uppercase().as_str()) {
-            return Err(DomainError::validation(format!("Invalid payment method: {}", method)));
+            return Err(DomainError::validation(format!(
+                "Invalid payment method: {}",
+                method
+            )));
         }
         Ok(())
     }

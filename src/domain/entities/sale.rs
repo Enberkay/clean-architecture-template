@@ -3,6 +3,7 @@ use crate::domain::{
     value_objects::money::Money,
 };
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 
 #[derive(Debug, Clone)]
 pub struct SaleEntity {
@@ -30,7 +31,11 @@ pub struct SaleItemEntity {
 
 impl SaleEntity {
     /// Create new Sale record
-    pub fn new(employee_id: Option<i32>, branch_id: Option<i32>, payment_method: String) -> DomainResult<Self> {
+    pub fn new(
+        employee_id: Option<i32>,
+        branch_id: Option<i32>,
+        payment_method: String,
+    ) -> DomainResult<Self> {
         Self::validate_payment_method(&payment_method)?;
         let now = Utc::now();
         Ok(Self {
@@ -46,7 +51,7 @@ impl SaleEntity {
 
     /// Update total amount (must not be negative)
     pub fn update_total(&mut self, new_total: Money) -> DomainResult<()> {
-        if new_total.value() < 0.0 {
+        if new_total.value() < Decimal::ZERO {
             return Err(DomainError::validation("Total amount cannot be negative"));
         }
         self.total_amount = new_total;
@@ -72,7 +77,7 @@ impl SaleEntity {
         if self.payment_method.trim().is_empty() {
             return Err(DomainError::validation("Payment method cannot be empty"));
         }
-        if self.total_amount.value() < 0.0 {
+        if self.total_amount.value() < Decimal::ZERO {
             return Err(DomainError::validation("Invalid total amount"));
         }
         Ok(())
@@ -82,7 +87,10 @@ impl SaleEntity {
         let valid = ["CASH", "CARD", "PROMPTPAY", "TRANSFER"];
         let upper = method.trim().to_uppercase();
         if !valid.contains(&upper.as_str()) {
-            return Err(DomainError::validation(format!("Invalid payment method: {}", method)));
+            return Err(DomainError::validation(format!(
+                "Invalid payment method: {}",
+                method
+            )));
         }
         Ok(())
     }
@@ -90,7 +98,7 @@ impl SaleEntity {
     /// Quick summary string
     pub fn summary(&self) -> String {
         format!(
-            "Sale(id={}, total={:.2}, payment={}, date={})",
+            "Sale(id={}, total={}, payment={}, date={})",
             self.id,
             self.total_amount.value(),
             self.payment_method,
@@ -143,7 +151,7 @@ impl SaleItemEntity {
     /// Validate this item
     pub fn validate(&self) -> DomainResult<()> {
         Self::validate_quantity(self.quantity)?;
-        if self.subtotal.value() <= 0.0 {
+        if self.subtotal.value() <= Decimal::ZERO {
             return Err(DomainError::validation("Subtotal must be greater than zero"));
         }
         Ok(())
@@ -152,8 +160,10 @@ impl SaleItemEntity {
     /// Quick display summary
     pub fn summary(&self) -> String {
         format!(
-            "{} x{} = {:.2}",
-            self.book_title, self.quantity, self.subtotal.value()
+            "{} x{} = {}",
+            self.book_title,
+            self.quantity,
+            self.subtotal.value()
         )
     }
 }

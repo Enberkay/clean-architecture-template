@@ -3,6 +3,7 @@ use crate::domain::{
     value_objects::{isbn13::Isbn13, money::Money},
 };
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 
 #[derive(Debug, Clone)]
 pub struct BookEntity {
@@ -27,6 +28,10 @@ impl BookEntity {
     ) -> DomainResult<Self> {
         if title.trim().is_empty() {
             return Err(DomainError::validation("Book title cannot be empty"));
+        }
+
+        if price.value() <= Decimal::ZERO {
+            return Err(DomainError::validation("Book price must be greater than zero"));
         }
 
         let now = Utc::now();
@@ -54,7 +59,7 @@ impl BookEntity {
 
     /// Update book price with validation.
     pub fn update_price(&mut self, new_price: Money) -> DomainResult<()> {
-        if new_price.value() <= 0.0 {
+        if new_price.value() <= Decimal::ZERO {
             return Err(DomainError::validation("Book price must be greater than zero"));
         }
         self.price = new_price;
