@@ -8,3 +8,4 @@ pub mod payment_repository;
 pub mod permission_repository;
 pub mod receipt_repository;
 pub mod role_repository;
+pub mod sale_repository;
