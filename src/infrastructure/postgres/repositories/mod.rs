@@ -5,3 +5,4 @@ pub mod category_repository;
 pub mod inventory_repository;
 pub mod order_repository;
 pub mod payment_repository;
+pub mod permission_repository;
