@@ -9,7 +9,6 @@ use crate::domain::{
 };
 use crate::infrastructure::postgres::models::book_model::BookModel;
 
-/// Implementation of BookRepository for PostgreSQL using sqlx
 pub struct PostgresBookRepository {
     pool: PgPool,
 }
