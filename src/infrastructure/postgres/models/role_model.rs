@@ -14,6 +14,7 @@ pub struct RoleModel {
     pub name: String,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 // ==================================
@@ -26,7 +27,9 @@ impl From<RoleModel> for RoleEntity {
             id: model.id,
             name: model.name,
             description: model.description,
+            permissions: Vec::new(),
             created_at: model.created_at,
+            updated_at: model.updated_at,
         }
     }
 }
@@ -38,6 +41,7 @@ impl From<RoleEntity> for RoleModel {
             name: entity.name,
             description: entity.description,
             created_at: entity.created_at,
+            updated_at: entity.updated_at,
         }
     }
 }

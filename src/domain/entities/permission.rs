@@ -7,18 +7,19 @@ pub struct PermissionEntity {
     pub name: String,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl PermissionEntity {
     /// Create a new permission entity with validation
     pub fn new(name: String, description: Option<String>) -> DomainResult<Self> {
         Self::validate_name(&name)?;
-
         Ok(Self {
             id: 0,
             name: name.trim().to_string(),
             description: description.map(|d| d.trim().to_string()),
             created_at: Utc::now(),
+            updated_at: Utc::now(),
         })
     }
 
@@ -32,6 +33,12 @@ impl PermissionEntity {
     /// Update description (optional)
     pub fn update_description(&mut self, description: Option<String>) {
         self.description = description.map(|d| d.trim().to_string());
+    }
+
+    /// Validate the entity fields (for service layer)
+    pub fn validate(&self) -> DomainResult<()> {
+        Self::validate_name(&self.name)?;
+        Ok(())
     }
 
     /// Validate permission name (business rule)
@@ -52,9 +59,7 @@ impl PermissionEntity {
             "Permission(id={}, name='{}', desc={})",
             self.id,
             self.name,
-            self.description
-                .as_deref()
-                .unwrap_or("No description")
+            self.description.as_deref().unwrap_or("No description")
         )
     }
 }

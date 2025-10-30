@@ -38,6 +38,7 @@ CREATE TABLE roles (
     name VARCHAR(100) NOT NULL UNIQUE,  -- e.g. 'ADMIN', 'EMPLOYEE', 'CUSTOMER'
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 );
 
 CREATE TABLE permissions (
@@ -45,6 +46,7 @@ CREATE TABLE permissions (
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 );
 
 CREATE TABLE user_roles (
