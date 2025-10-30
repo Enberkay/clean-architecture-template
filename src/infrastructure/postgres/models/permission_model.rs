@@ -4,9 +4,9 @@ use sqlx::FromRow;
 
 use crate::domain::entities::permission::PermissionEntity;
 
-/// ======================
-/// PermissionModel (SQLx)
-/// ======================
+// ======================
+// PermissionModel (SQLx)
+// ======================
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct PermissionModel {
     pub id: i32,
@@ -16,9 +16,9 @@ pub struct PermissionModel {
     pub updated_at: DateTime<Utc>,
 }
 
-/// ==================================
-/// Mapping between Entity ↔ Model
-/// ==================================
+// ==================================
+// Mapping between Entity ↔ Model
+// ==================================
 impl From<PermissionModel> for PermissionEntity {
     fn from(model: PermissionModel) -> Self {
         Self {

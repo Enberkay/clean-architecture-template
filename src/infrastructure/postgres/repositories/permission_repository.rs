@@ -21,7 +21,7 @@ impl PostgresPermissionRepository {
 #[async_trait]
 impl PermissionRepository for PostgresPermissionRepository {
     async fn find_all(&self) -> Result<Vec<PermissionEntity>> {
-        let rows = sqlx::query_as::<_, PermissionModel>(
+        let results = sqlx::query_as::<_, PermissionModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
             FROM permissions
@@ -31,11 +31,11 @@ impl PermissionRepository for PostgresPermissionRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(PermissionEntity::from).collect())
+        Ok(results.into_iter().map(PermissionEntity::from).collect())
     }
 
     async fn find_by_id(&self, id: i32) -> Result<Option<PermissionEntity>> {
-        let row = sqlx::query_as::<_, PermissionModel>(
+        let result = sqlx::query_as::<_, PermissionModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
             FROM permissions
@@ -46,11 +46,11 @@ impl PermissionRepository for PostgresPermissionRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(PermissionEntity::from))
+        Ok(result.map(PermissionEntity::from))
     }
 
     async fn find_by_ids(&self, ids: &[i32]) -> Result<Vec<PermissionEntity>> {
-        let rows = sqlx::query_as::<_, PermissionModel>(
+        let results = sqlx::query_as::<_, PermissionModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
             FROM permissions
@@ -62,7 +62,7 @@ impl PermissionRepository for PostgresPermissionRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(PermissionEntity::from).collect())
+        Ok(results.into_iter().map(PermissionEntity::from).collect())
     }
 
     async fn save(&self, permission: &PermissionEntity) -> Result<()> {
@@ -74,7 +74,7 @@ impl PermissionRepository for PostgresPermissionRepository {
             permission.name,
             permission.description,
             permission.created_at,
-            permission.updated_at
+            permission.updated_at,
         )
         .execute(&self.pool)
         .await?;
@@ -92,7 +92,7 @@ impl PermissionRepository for PostgresPermissionRepository {
             "#,
             permission.name,
             permission.description,
-            permission.id
+            permission.id,
         )
         .execute(&self.pool)
         .await?;
