@@ -6,29 +6,45 @@ use crate::application::dtos::role_dto::{
 };
 use crate::domain::{
     entities::role::RoleEntity,
-    repositories::{role_repository::RoleRepository, permission_repository::PermissionRepository},
+    repositories::{
+        role_repository::RoleRepository,
+        permission_repository::PermissionRepository,
+        role_permission_repository::RolePermissionRepository,
+    },
 };
 
 pub struct RoleService {
     role_repo: Arc<dyn RoleRepository>,
     perm_repo: Arc<dyn PermissionRepository>,
+    role_perm_repo: Arc<dyn RolePermissionRepository>,
 }
 
 impl RoleService {
-    pub fn new(role_repo: Arc<dyn RoleRepository>, perm_repo: Arc<dyn PermissionRepository>) -> Self {
-        Self { role_repo, perm_repo }
+    pub fn new(
+        role_repo: Arc<dyn RoleRepository>,
+        perm_repo: Arc<dyn PermissionRepository>,
+        role_perm_repo: Arc<dyn RolePermissionRepository>,
+    ) -> Self {
+        Self {
+            role_repo,
+            perm_repo,
+            role_perm_repo,
+        }
     }
 
     pub async fn create_role(&self, req: CreateRoleRequest) -> Result<RoleResponse> {
         let mut role = RoleEntity::new(req.name, req.description)?;
 
-        // Assign permissions if provided
+        //save to get valid role.id
+        self.role_repo.save(&role).await?;
+
+        //assign permissions if provided
         if let Some(perm_ids) = req.permission_ids {
             let permissions = self.perm_repo.find_by_ids(&perm_ids).await?;
+            self.role_perm_repo.assign_permissions(role.id, &perm_ids).await?;
             role.set_permissions(permissions)?;
         }
 
-        self.role_repo.save(&role).await?;
         Ok(RoleResponse::from(role))
     }
 
@@ -55,9 +71,14 @@ impl RoleService {
             role.description = Some(desc);
         }
 
-        // Update permissions if specified
+        //Update permissions if specified
         if let Some(perm_ids) = req.permission_ids {
             let permissions = self.perm_repo.find_by_ids(&perm_ids).await?;
+
+            // clear old ones then assign new
+            self.role_perm_repo.clear_permissions(role.id).await?;
+            self.role_perm_repo.assign_permissions(role.id, &perm_ids).await?;
+
             role.set_permissions(permissions)?;
         }
 
@@ -67,6 +88,8 @@ impl RoleService {
     }
 
     pub async fn delete_role(&self, id: i32) -> Result<()> {
+        // optional: remove role-permission links first
+        self.role_perm_repo.clear_permissions(id).await?;
         self.role_repo.delete(id).await
     }
 }
