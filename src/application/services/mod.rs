@@ -7,3 +7,4 @@ pub mod inventory_service;
 pub mod order_service;
 pub mod payment_service;
 pub mod receipt_service;
+pub mod sale_service;
