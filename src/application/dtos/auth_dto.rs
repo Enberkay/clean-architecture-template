@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct LoginRequest {
+    #[validate(email(message = "Invalid email format"))]
     pub email: String,
+
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
 }
 
@@ -12,17 +16,30 @@ pub struct LoginResponse {
     pub refresh_token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct RegisterRequest {
+    #[validate(length(min = 2, max = 50, message = "First name must be 2-50 characters"))]
     pub fname: String,
+
+    #[validate(length(min = 2, max = 50, message = "Last name must be 2-50 characters"))]
     pub lname: String,
+
+    #[validate(email(message = "Invalid email format"))]
     pub email: String,
+
+    // Simple rule: just require minimum length
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
+
+    #[validate(range(min = 1, max = 120, message = "Age must be between 1 and 120"))]
     pub age: i32,
+
+    #[validate(length(min = 1, max = 20, message = "Sex must be 1-20 characters"))]
     pub sex: String,
+
+    #[validate(length(min = 6, max = 20, message = "Phone must be 6-20 characters"))]
     pub phone: String,
 }
-
 
 #[derive(Debug, Serialize)]
 pub struct RegisterResponse {
