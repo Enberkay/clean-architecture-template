@@ -4,7 +4,11 @@ use axum::{
     routing::{get, post, put, delete},
     Json, Router,
 };
+use serde_json::json;
+use validator::Validate;
+
 use crate::application::{
+    application_errors::ApplicationError,
     dtos::user_dto::{CreateUserRequest, UpdateUserRequest, UserResponse},
     services::user_service::UserService,
 };
@@ -24,30 +28,30 @@ pub fn routes(user_service: Arc<UserService>) -> Router {
 async fn create_user(
     State(service): State<Arc<UserService>>,
     Json(payload): Json<CreateUserRequest>,
-) -> Result<Json<UserResponse>, (axum::http::StatusCode, String)> {
-    service
-        .create_user(payload)
-        .await
-        .map(Json)
-        .map_err(internal_error)
+) -> Result<Json<UserResponse>, ApplicationError> {
+    //Validate request payload
+    payload
+        .validate()
+        .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
+
+    service.create_user(payload).await.map(Json)
 }
 
 /// GET /users
 async fn get_all_users(
     State(service): State<Arc<UserService>>,
-) -> Result<Json<Vec<UserResponse>>, (axum::http::StatusCode, String)> {
-    service.get_all_users().await.map(Json).map_err(internal_error)
+) -> Result<Json<Vec<UserResponse>>, ApplicationError> {
+    service.get_all_users().await.map(Json)
 }
 
 /// GET /users/{id}
 async fn get_user_by_id(
     State(service): State<Arc<UserService>>,
     Path(id): Path<i32>,
-) -> Result<Json<UserResponse>, (axum::http::StatusCode, String)> {
-    match service.get_user_by_id(id).await {
-        Ok(Some(user)) => Ok(Json(user)),
-        Ok(None) => Err((axum::http::StatusCode::NOT_FOUND, "User not found".into())),
-        Err(e) => Err(internal_error(e)),
+) -> Result<Json<UserResponse>, ApplicationError> {
+    match service.get_user_by_id(id).await? {
+        Some(user) => Ok(Json(user)),
+        None => Err(ApplicationError::not_found("User not found")),
     }
 }
 
@@ -56,25 +60,21 @@ async fn update_user(
     State(service): State<Arc<UserService>>,
     Path(id): Path<i32>,
     Json(payload): Json<UpdateUserRequest>,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    match service.update_user(id, payload).await {
-        Ok(_) => Ok(Json(serde_json::json!({"status": "success"}))),
-        Err(e) => Err(internal_error(e)),
-    }
+) -> Result<Json<serde_json::Value>, ApplicationError> {
+    //Validate request payload
+    payload
+        .validate()
+        .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
+
+    service.update_user(id, payload).await?;
+    Ok(Json(json!({ "status": "success" })))
 }
 
 /// DELETE /users/{id}
 async fn delete_user(
     State(service): State<Arc<UserService>>,
     Path(id): Path<i32>,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    match service.delete_user(id).await {
-        Ok(_) => Ok(Json(serde_json::json!({"status": "deleted"}))),
-        Err(e) => Err(internal_error(e)),
-    }
-}
-
-/// Standardized error response
-fn internal_error<E: std::fmt::Display>(err: E) -> (axum::http::StatusCode, String) {
-    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+) -> Result<Json<serde_json::Value>, ApplicationError> {
+    service.delete_user(id).await?;
+    Ok(Json(json!({ "status": "deleted" })))
 }
