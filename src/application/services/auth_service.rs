@@ -1,18 +1,16 @@
 use std::sync::Arc;
-use anyhow::Result;
-
-use crate::application::dtos::auth_dto::{
-    LoginRequest,
-    LoginResponse,
-    RegisterRequest,
-    RegisterResponse,
+use crate::application::{
+    application_errors::{ApplicationError, ApplicationResult},
+    dtos::auth_dto::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse},
 };
-use crate::domain::repositories::{
-    user_repository::UserRepository,
-    password_repository::PasswordRepository,
-    token_repository::{JwtRepository, TokenRepository},
+use crate::domain::{
+    entities::refresh_token::NewRefreshToken,
+    repositories::{
+        user_repository::UserRepository,
+        password_repository::PasswordRepository,
+        token_repository::{JwtRepository, TokenRepository},
+    },
 };
-use crate::domain::entities::refresh_token::NewRefreshToken;
 
 /// AuthService จัดการ Authentication flow ทั้งหมด
 pub struct AuthService {
@@ -38,11 +36,20 @@ impl AuthService {
     }
 
     /// สมัครสมาชิกใหม่
-    pub async fn register(&self, req: RegisterRequest) -> Result<RegisterResponse> {
-        // hash password
-        let hashed_password = self.password_repo.hash(&req.password).await?;
+    pub async fn register(&self, req: RegisterRequest) -> ApplicationResult<RegisterResponse> {
+        //ตรวจสอบว่าอีเมลซ้ำไหม
+        if let Some(_) = self.user_repo.find_by_email(&req.email).await.map_err(|e| {
+            ApplicationError::internal(format!("Database error while checking email: {}", e))
+        })? {
+            return Err(ApplicationError::conflict("Email already exists"));
+        }
 
-        //สร้าง user entity ให้ตรงกับ signature
+        //hash password
+        let hashed_password = self.password_repo.hash(&req.password).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to hash password: {}", e))
+        })?;
+
+        //สร้าง user entity
         let user = crate::domain::entities::user::UserEntity::new(
             req.fname,
             req.lname,
@@ -52,10 +59,13 @@ impl AuthService {
             req.phone,
             hashed_password,
             None,
-        )?;
+        )
+        .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
 
-        // save user
-        self.user_repo.save(&user).await?;
+        //save user
+        self.user_repo.save(&user).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to save user: {}", e))
+        })?;
 
         Ok(RegisterResponse {
             id: user.id,
@@ -65,43 +75,56 @@ impl AuthService {
         })
     }
 
-
     /// เข้าสู่ระบบ
-    pub async fn login(&self, req: LoginRequest) -> Result<LoginResponse> {
-        let user_opt = self.user_repo.find_by_email(&req.email).await?;
+    pub async fn login(&self, req: LoginRequest) -> ApplicationResult<LoginResponse> {
+        //ค้นหาผู้ใช้
+        let user_opt = self.user_repo.find_by_email(&req.email).await.map_err(|e| {
+            ApplicationError::internal(format!("Database error while fetching user: {}", e))
+        })?;
+
         let user = match user_opt {
             Some(u) => u,
-            None => anyhow::bail!("Invalid credentials"),
+            None => return Err(ApplicationError::unauthorized("Invalid credentials")),
         };
 
-        // verify password
-        let valid = self.password_repo.verify(&req.password, &user.password).await?;
+        //ตรวจรหัสผ่าน
+        let valid = self.password_repo.verify(&req.password, &user.password).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to verify password: {}", e))
+        })?;
+
         if !valid {
-            anyhow::bail!("Invalid credentials");
+            return Err(ApplicationError::unauthorized("Invalid credentials"));
         }
 
-        // UserEntity ไม่มี roles / permissions — ใช้ค่า default แทน
-        let roles: Vec<String> = Vec::new();
-        let permissions: Vec<String> = Vec::new();
-
-        // create access token
+        //generate tokens
         let access_token = self
             .jwt_repo
-            .create_access_token(user.id, &roles, &permissions)
-            .await?;
+            .create_access_token(user.id, &[], &[])
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to create access token: {}", e)))?;
 
-        // create refresh token (plain)
-        let refresh_token = self.jwt_repo.create_refresh_token(user.id, 7).await?;
-        let refresh_token_hash = self.jwt_repo.hash_refresh_token(&refresh_token).await?;
+        let refresh_token = self
+            .jwt_repo
+            .create_refresh_token(user.id, 7)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to create refresh token: {}", e)))?;
 
-        // store refresh token in redis
+        let refresh_token_hash = self
+            .jwt_repo
+            .hash_refresh_token(&refresh_token)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to hash refresh token: {}", e)))?;
+
+        //store refresh token
         let token_data = NewRefreshToken {
             user_id: user.id,
             token_hash: refresh_token_hash,
             expires_at: chrono::Utc::now() + chrono::Duration::days(7),
         };
 
-        self.token_repo.store_refresh_token(token_data).await?;
+        self.token_repo.store_refresh_token(token_data).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to store refresh token: {}", e))
+        })?;
 
         Ok(LoginResponse {
             access_token,
@@ -109,14 +132,18 @@ impl AuthService {
         })
     }
 
-    /// Validate token and return user id
-    pub async fn validate_token(&self, token: &str) -> Result<i32> {
-        let user_id = self.jwt_repo.validate_access_token(token).await?;
+    ///Validate token and return user id
+    pub async fn validate_token(&self, token: &str) -> ApplicationResult<i32> {
+        let user_id = self.jwt_repo.validate_access_token(token).await.map_err(|e| {
+            ApplicationError::unauthorized(format!("Invalid or expired token: {}", e))
+        })?;
         Ok(user_id)
     }
 
-    /// Logout (revoke refresh token)
-    pub async fn logout(&self, refresh_token_hash: &str) -> Result<()> {
-        self.token_repo.revoke_token(refresh_token_hash).await
+    ///Logout (revoke refresh token)
+    pub async fn logout(&self, refresh_token_hash: &str) -> ApplicationResult<()> {
+        self.token_repo.revoke_token(refresh_token_hash).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to revoke token: {}", e))
+        })
     }
 }
