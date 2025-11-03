@@ -5,11 +5,14 @@ use axum::{
 };
 use std::sync::Arc;
 use serde_json::json;
-use anyhow::Result;
+use validator::Validate;
 
 use crate::{
-    application::services::auth_service::AuthService,
-    application::dtos::auth_dto::{LoginRequest, RegisterRequest},
+    application::{
+        application_errors::ApplicationError,
+        services::auth_service::AuthService,
+        dtos::auth_dto::{LoginRequest, RegisterRequest},
+    },
 };
 
 #[derive(Clone)]
@@ -29,25 +32,51 @@ pub fn routes(auth_service: Arc<AuthService>) -> Router {
 async fn register(
     State(state): State<AuthRouterState>,
     Json(req): Json<RegisterRequest>,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+) -> Result<Json<serde_json::Value>, ApplicationError> {
+    //ตรวจสอบ validation
+    if let Err(e) = req.validate() {
+        let msg = e
+            .field_errors()
+            .values()
+            .flat_map(|errs| errs.iter().filter_map(|err| err.message.clone()))
+            .map(|m| m.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(ApplicationError::bad_request(msg));
+    }
+
+    //ดำเนินการ register
     match state.auth_service.register(req).await {
         Ok(res) => Ok(Json(json!({
             "status": "success",
             "data": res
         }))),
-        Err(err) => Err((axum::http::StatusCode::BAD_REQUEST, err.to_string())),
+        Err(err) => Err(ApplicationError::bad_request(err.to_string())),
     }
 }
 
 async fn login(
     State(state): State<AuthRouterState>,
     Json(req): Json<LoginRequest>,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+) -> Result<Json<serde_json::Value>, ApplicationError> {
+    //ตรวจสอบ validation
+    if let Err(e) = req.validate() {
+        let msg = e
+            .field_errors()
+            .values()
+            .flat_map(|errs| errs.iter().filter_map(|err| err.message.clone()))
+            .map(|m| m.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(ApplicationError::bad_request(msg));
+    }
+
+    //ดำเนินการ login
     match state.auth_service.login(req).await {
         Ok(res) => Ok(Json(json!({
             "status": "success",
             "data": res
         }))),
-        Err(err) => Err((axum::http::StatusCode::UNAUTHORIZED, err.to_string())),
+        Err(err) => Err(ApplicationError::unauthorized(err.to_string())),
     }
 }
