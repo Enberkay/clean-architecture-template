@@ -4,7 +4,11 @@ use axum::{
     routing::{get, post, put, delete},
     Json, Router,
 };
+use serde_json::json;
+use validator::Validate;
+
 use crate::application::{
+    application_errors::ApplicationError,
     dtos::permission_dto::{CreatePermissionRequest, UpdatePermissionRequest, PermissionResponse},
     services::permission_service::PermissionService,
 };
@@ -24,34 +28,29 @@ pub fn routes(permission_service: Arc<PermissionService>) -> Router {
 async fn create_permission(
     State(service): State<Arc<PermissionService>>,
     Json(payload): Json<CreatePermissionRequest>,
-) -> Result<Json<PermissionResponse>, (axum::http::StatusCode, String)> {
-    service
-        .create_permission(payload)
-        .await
-        .map(Json)
-        .map_err(internal_error)
+) -> Result<Json<PermissionResponse>, ApplicationError> {
+    payload
+        .validate()
+        .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
+
+    service.create_permission(payload).await.map(Json)
 }
 
 /// GET /permissions
 async fn get_all_permissions(
     State(service): State<Arc<PermissionService>>,
-) -> Result<Json<Vec<PermissionResponse>>, (axum::http::StatusCode, String)> {
-    service
-        .get_all_permissions()
-        .await
-        .map(Json)
-        .map_err(internal_error)
+) -> Result<Json<Vec<PermissionResponse>>, ApplicationError> {
+    service.get_all_permissions().await.map(Json)
 }
 
 /// GET /permissions/{id}
 async fn get_permission_by_id(
     State(service): State<Arc<PermissionService>>,
     Path(id): Path<i32>,
-) -> Result<Json<PermissionResponse>, (axum::http::StatusCode, String)> {
-    match service.get_permission_by_id(id).await {
-        Ok(Some(perm)) => Ok(Json(perm)),
-        Ok(None) => Err((axum::http::StatusCode::NOT_FOUND, "Permission not found".into())),
-        Err(e) => Err(internal_error(e)),
+) -> Result<Json<PermissionResponse>, ApplicationError> {
+    match service.get_permission_by_id(id).await? {
+        Some(perm) => Ok(Json(perm)),
+        None => Err(ApplicationError::not_found("Permission not found")),
     }
 }
 
@@ -60,25 +59,20 @@ async fn update_permission(
     State(service): State<Arc<PermissionService>>,
     Path(id): Path<i32>,
     Json(payload): Json<UpdatePermissionRequest>,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    match service.update_permission(id, payload).await {
-        Ok(_) => Ok(Json(serde_json::json!({"status": "updated"}))),
-        Err(e) => Err(internal_error(e)),
-    }
+) -> Result<Json<serde_json::Value>, ApplicationError> {
+    payload
+        .validate()
+        .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
+
+    service.update_permission(id, payload).await?;
+    Ok(Json(json!({ "status": "updated" })))
 }
 
 /// DELETE /permissions/{id}
 async fn delete_permission(
     State(service): State<Arc<PermissionService>>,
     Path(id): Path<i32>,
-) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    match service.delete_permission(id).await {
-        Ok(_) => Ok(Json(serde_json::json!({"status": "deleted"}))),
-        Err(e) => Err(internal_error(e)),
-    }
-}
-
-/// Helper for consistent error handling
-fn internal_error<E: std::fmt::Display>(err: E) -> (axum::http::StatusCode, String) {
-    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+) -> Result<Json<serde_json::Value>, ApplicationError> {
+    service.delete_permission(id).await?;
+    Ok(Json(json!({ "status": "deleted" })))
 }
