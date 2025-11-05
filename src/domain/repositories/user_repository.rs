@@ -8,7 +8,7 @@ pub trait UserRepository: Send + Sync {
     async fn find_all(&self) -> Result<Vec<UserEntity>>;
     async fn find_by_id(&self, id: i32) -> Result<Option<UserEntity>>;
     async fn find_by_email(&self, email: &str) -> Result<Option<UserEntity>>;
-    async fn save(&self, user: &UserEntity) -> Result<()>;
+    async fn save(&self, user: &UserEntity) -> Result<i32>;
     async fn update(&self, user: &UserEntity) -> Result<()>;
     async fn delete(&self, id: i32) -> Result<()>;
 

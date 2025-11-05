@@ -63,12 +63,12 @@ impl AuthService {
         .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
 
         //save user
-        self.user_repo.save(&user).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to save user: {}", e))
-        })?;
+        let user_id = self.user_repo.save(&user).await.map_err(|e| {
+                    ApplicationError::internal(format!("Failed to save user: {}", e))
+                })?;
 
         Ok(RegisterResponse {
-            id: user.id,
+            id: user_id,
             email: user.email.as_str().to_string(),
             fname: user.first_name.clone(),
             lname: user.last_name.clone(),

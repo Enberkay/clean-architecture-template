@@ -1,16 +1,12 @@
 use async_trait::async_trait;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use anyhow::Result;
 
 use crate::domain::{
-    entities::{
-        user::UserEntity,
-        role::RoleEntity,
-    },
+    entities::{user::UserEntity, role::RoleEntity},
     repositories::user_repository::UserRepository,
 };
-use crate::infrastructure::postgres::models::user_model::UserModel;
-use crate::infrastructure::postgres::models::role_model::RoleModel;
+use crate::infrastructure::postgres::models::{user_model::UserModel, role_model::RoleModel};
 
 pub struct PostgresUserRepository {
     pool: PgPool,
@@ -24,10 +20,6 @@ impl PostgresUserRepository {
 
 #[async_trait]
 impl UserRepository for PostgresUserRepository {
-    // ----------------------------------
-    // Basic CRUD
-    // ----------------------------------
-
     async fn find_by_id(&self, id: i32) -> Result<Option<UserEntity>> {
         let result = sqlx::query_as::<_, UserModel>(
             r#"
@@ -75,44 +67,33 @@ impl UserRepository for PostgresUserRepository {
         Ok(results.into_iter().map(UserEntity::from).collect())
     }
 
-    async fn save(&self, user: &UserEntity) -> Result<()> {
-        sqlx::query!(
+    async fn save(&self, user: &UserEntity) -> Result<i32> {
+        let row = sqlx::query(
             r#"
             INSERT INTO users
-                (id, fname, lname, email, age, sex, phone, password,
+                (fname, lname, email, age, sex, phone, password,
                  branch_id, is_active, created_at, updated_at)
             VALUES
-                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            ON CONFLICT (id)
-            DO UPDATE SET
-                fname = EXCLUDED.fname,
-                lname = EXCLUDED.lname,
-                email = EXCLUDED.email,
-                age = EXCLUDED.age,
-                sex = EXCLUDED.sex,
-                phone = EXCLUDED.phone,
-                password = EXCLUDED.password,
-                branch_id = EXCLUDED.branch_id,
-                is_active = EXCLUDED.is_active,
-                updated_at = EXCLUDED.updated_at
+                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING id
             "#,
-            user.id,
-            user.first_name,
-            user.last_name,
-            user.email.as_str(),
-            user.age,
-            user.sex,
-            user.phone,
-            user.password,
-            user.branch_id,
-            user.is_active,
-            user.created_at,
-            user.updated_at
         )
-        .execute(&self.pool)
+        .bind(&user.first_name)
+        .bind(&user.last_name)
+        .bind(user.email.as_str())
+        .bind(user.age)
+        .bind(&user.sex)
+        .bind(&user.phone)
+        .bind(&user.password)
+        .bind(user.branch_id)
+        .bind(user.is_active)
+        .bind(user.created_at)
+        .bind(user.updated_at)
+        .fetch_one(&self.pool)
         .await?;
 
-        Ok(())
+        let id: i32 = row.try_get("id")?;
+        Ok(id)
     }
 
     async fn update(&self, user: &UserEntity) -> Result<()> {
@@ -143,27 +124,18 @@ impl UserRepository for PostgresUserRepository {
         )
         .execute(&self.pool)
         .await?;
-
         Ok(())
     }
 
     async fn delete(&self, id: i32) -> Result<()> {
         sqlx::query!(
-            r#"
-            DELETE FROM users
-            WHERE id = $1
-            "#,
+            "DELETE FROM users WHERE id = $1",
             id
         )
         .execute(&self.pool)
         .await?;
-
         Ok(())
     }
-
-    // ----------------------------------
-    // RBAC Section
-    // ----------------------------------
 
     async fn assign_roles(&self, user_id: i32, role_ids: &[i32]) -> Result<()> {
         for &role_id in role_ids {
@@ -184,17 +156,12 @@ impl UserRepository for PostgresUserRepository {
 
     async fn remove_roles(&self, user_id: i32, role_ids: &[i32]) -> Result<()> {
         sqlx::query!(
-            r#"
-            DELETE FROM user_roles
-            WHERE user_id = $1
-              AND role_id = ANY($2)
-            "#,
+            "DELETE FROM user_roles WHERE user_id = $1 AND role_id = ANY($2)",
             user_id,
             role_ids
         )
         .execute(&self.pool)
         .await?;
-
         Ok(())
     }
 
