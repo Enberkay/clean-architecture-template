@@ -142,6 +142,76 @@ impl AuthService {
         Ok(user_id)
     }
 
+    ///Refresh access token using refresh token
+    pub async fn refresh_token(&self, refresh_token: &str) -> ApplicationResult<(LoginResponse, String)> {
+        // Hash the refresh token to compare with stored hash
+        let refresh_token_hash = self
+            .jwt_repo
+            .hash_refresh_token(refresh_token)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to hash refresh token: {}", e)))?;
+
+        // Get stored refresh token from repository
+        let stored_token = self.token_repo.get_refresh_token(&refresh_token_hash).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to get refresh token: {}", e))
+        })?;
+
+        let stored_token = match stored_token {
+            Some(token) => token,
+            None => return Err(ApplicationError::unauthorized("Invalid or expired refresh token")),
+        };
+
+        // Check if token is expired
+        if stored_token.expires_at < chrono::Utc::now() {
+            // Clean up expired token
+            let _ = self.token_repo.revoke_token(&refresh_token_hash).await;
+            return Err(ApplicationError::unauthorized("Refresh token expired"));
+        }
+
+        // Generate new access token
+        let new_access_token = self
+            .jwt_repo
+            .create_access_token(stored_token.user_id, &[], &[])
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to create access token: {}", e)))?;
+
+        // Generate new refresh token (rotation)
+        let new_refresh_token = self
+            .jwt_repo
+            .create_refresh_token(stored_token.user_id, 7)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to create refresh token: {}", e)))?;
+
+        let new_refresh_token_hash = self
+            .jwt_repo
+            .hash_refresh_token(&new_refresh_token)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to hash refresh token: {}", e)))?;
+
+        // Store new refresh token
+        let token_data = NewRefreshToken {
+            user_id: stored_token.user_id,
+            token_hash: new_refresh_token_hash.clone(),
+            expires_at: chrono::Utc::now() + chrono::Duration::days(7),
+        };
+
+        self.token_repo.store_refresh_token(token_data).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to store refresh token: {}", e))
+        })?;
+
+        // Revoke old refresh token
+        self.token_repo.revoke_token(&refresh_token_hash).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to revoke old refresh token: {}", e))
+        })?;
+
+        Ok((
+            LoginResponse {
+                access_token: new_access_token,
+            },
+            new_refresh_token,
+        ))
+    }
+
     ///Logout (revoke refresh token)
     pub async fn logout(&self, refresh_token_hash: &str) -> ApplicationResult<()> {
         self.token_repo.revoke_token(refresh_token_hash).await.map_err(|e| {

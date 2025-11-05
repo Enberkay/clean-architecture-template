@@ -65,7 +65,7 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
     let auth_service = Arc::new(AuthService::new(
         user_repo.clone(),
         password_repo,
-        jwt_repo,
+        jwt_repo.clone(),
         redis_token_repo,
     ));
     let user_service = Arc::new(UserService::new(user_repo.clone(), role_repo.clone()));
@@ -83,7 +83,7 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
     let app = Router::new()
         .merge(health_router)
         .fallback(default_router::not_found)
-        .nest("/auth", routers::auth_router::routes(auth_service))
+        .nest("/auth", routers::auth_router::routes(auth_service, jwt_repo.clone()))
         .nest("/users", routers::user_router::routes(user_service))
         .nest("/roles", routers::role_router::routes(role_service))
         .nest("/permissions", routers::permission_router::routes(permission_service))

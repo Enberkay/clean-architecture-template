@@ -1,6 +1,6 @@
 use axum::{
     extract::{State, rejection::JsonRejection},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::post,
     Json, Router,
@@ -15,20 +15,27 @@ use crate::{
         services::auth_service::AuthService,
         dtos::auth_dto::{LoginRequest, RegisterRequest},
     },
-    infrastructure::axum_http::cookie_utils::set_refresh_token_cookie,
+    infrastructure::axum_http::cookie_utils::{
+        set_refresh_token_cookie,
+        extract_refresh_token_from_cookie,
+        clear_refresh_token_cookie,
+    },
 };
 
 #[derive(Clone)]
 pub struct AuthRouterState {
     pub auth_service: Arc<AuthService>,
+    pub jwt_repo: Arc<dyn crate::domain::repositories::token_repository::JwtRepository>,
 }
 
-pub fn routes(auth_service: Arc<AuthService>) -> Router {
-    let state = AuthRouterState { auth_service };
+pub fn routes(auth_service: Arc<AuthService>, jwt_repo: Arc<dyn crate::domain::repositories::token_repository::JwtRepository>) -> Router {
+    let state = AuthRouterState { auth_service, jwt_repo };
 
     Router::new()
         .route("/register", post(register))
         .route("/login", post(login))
+        .route("/refresh-token", post(refresh_token))
+        .route("/logout", post(logout))
         .with_state(state)
 }
 
@@ -129,6 +136,92 @@ async fn login(
             ).into_response();
 
             set_refresh_token_cookie(response, &refresh_token)
+        },
+
+        Err(err) => err.into_response(),
+    }
+}
+
+// ===============================
+// REFRESH TOKEN HANDLER
+// ===============================
+async fn refresh_token(
+    State(state): State<AuthRouterState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    // Extract refresh token from cookie
+    let refresh_token = match extract_refresh_token_from_cookie(&headers) {
+        Some(token) => token,
+        None => {
+            let response = json!({
+                "success": false,
+                "error": "Refresh token not found in cookies"
+            });
+            return (StatusCode::UNAUTHORIZED, Json(response)).into_response();
+        }
+    };
+
+    // --- Call service ---
+    match state.auth_service.refresh_token(&refresh_token).await {
+        Ok((login_res, new_refresh_token)) => {
+            let response = (
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "data": login_res
+                }))
+            ).into_response();
+
+            set_refresh_token_cookie(response, &new_refresh_token)
+        },
+
+        Err(err) => err.into_response(),
+    }
+}
+
+// ===============================
+// LOGOUT HANDLER
+// ===============================
+async fn logout(
+    State(state): State<AuthRouterState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    // Extract refresh token from cookie
+    let refresh_token = match extract_refresh_token_from_cookie(&headers) {
+        Some(token) => token,
+        None => {
+            let response = json!({
+                "success": false,
+                "error": "Refresh token not found in cookies"
+            });
+            return (StatusCode::UNAUTHORIZED, Json(response)).into_response();
+        }
+    };
+
+    // Hash the refresh token for repository lookup
+    let refresh_token_hash = match state.jwt_repo.hash_refresh_token(&refresh_token).await {
+        Ok(hash) => hash,
+        Err(_) => {
+            let response = json!({
+                "success": false,
+                "error": "Failed to process refresh token"
+            });
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(response)).into_response();
+        }
+    };
+
+    // --- Call service ---
+    match state.auth_service.logout(&refresh_token_hash).await {
+        Ok(_) => {
+            let response = (
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "message": "Logged out successfully"
+                }))
+            ).into_response();
+
+            clear_refresh_token_cookie(response)
         },
 
         Err(err) => err.into_response(),
