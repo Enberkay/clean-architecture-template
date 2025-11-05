@@ -65,20 +65,22 @@ impl PermissionRepository for PostgresPermissionRepository {
         Ok(results.into_iter().map(PermissionEntity::from).collect())
     }
 
-    async fn save(&self, permission: &PermissionEntity) -> Result<()> {
-        sqlx::query!(
+    async fn save(&self, permission: &PermissionEntity) -> Result<i32> {
+        let result = sqlx::query!(
             r#"
             INSERT INTO permissions (name, description, created_at, updated_at)
             VALUES ($1, $2, $3, $4)
+            RETURNING id
             "#,
-            permission.name,
-            permission.description,
-            permission.created_at,
-            permission.updated_at,
+            &permission.name,
+            permission.description.as_ref(),
+            &permission.created_at,
+            &permission.updated_at,
         )
-        .execute(&self.pool)
+        .fetch_one(&self.pool)
         .await?;
-        Ok(())
+
+        Ok(result.id)
     }
 
     async fn update(&self, permission: &PermissionEntity) -> Result<()> {

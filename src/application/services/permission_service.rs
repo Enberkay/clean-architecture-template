@@ -18,12 +18,15 @@ impl PermissionService {
     }
 
     pub async fn create_permission(&self, req: CreatePermissionRequest) -> ApplicationResult<PermissionResponse> {
-        let permission = PermissionEntity::new(req.name, req.description)
+        let mut permission = PermissionEntity::new(req.name, req.description)
             .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
 
-        self.repo.save(&permission).await.map_err(|e| {
+        let id = self.repo.save(&permission).await.map_err(|e| {
             ApplicationError::internal(format!("Failed to save permission: {}", e))
         })?;
+
+        // Set the returned ID to the entity
+        permission.id = id;
 
         Ok(PermissionResponse::from(permission))
     }
