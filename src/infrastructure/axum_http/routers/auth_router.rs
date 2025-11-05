@@ -15,6 +15,7 @@ use crate::{
         services::auth_service::AuthService,
         dtos::auth_dto::{LoginRequest, RegisterRequest},
     },
+    infrastructure::axum_http::cookie_utils::set_refresh_token_cookie,
 };
 
 #[derive(Clone)]
@@ -118,14 +119,17 @@ async fn login(
 
     // --- Call service ---
     match state.auth_service.login(req).await {
-        Ok(res) => (
-            StatusCode::OK,
-            Json(json!({
-                "success": true,
-                "data": res
-            })),
-        )
-            .into_response(),
+        Ok((login_res, refresh_token)) => {
+            let response = (
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "data": login_res
+                }))
+            ).into_response();
+
+            set_refresh_token_cookie(response, &refresh_token)
+        },
 
         Err(err) => err.into_response(),
     }

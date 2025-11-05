@@ -76,7 +76,7 @@ impl AuthService {
     }
 
     /// เข้าสู่ระบบ
-    pub async fn login(&self, req: LoginRequest) -> ApplicationResult<LoginResponse> {
+    pub async fn login(&self, req: LoginRequest) -> ApplicationResult<(LoginResponse, String)> {
         //ค้นหาผู้ใช้
         let user_opt = self.user_repo.find_by_email(&req.email).await.map_err(|e| {
             ApplicationError::internal(format!("Database error while fetching user: {}", e))
@@ -126,10 +126,12 @@ impl AuthService {
             ApplicationError::internal(format!("Failed to store refresh token: {}", e))
         })?;
 
-        Ok(LoginResponse {
-            access_token,
+        Ok((
+            LoginResponse {
+                access_token,
+            },
             refresh_token,
-        })
+        ))
     }
 
     ///Validate token and return user id
