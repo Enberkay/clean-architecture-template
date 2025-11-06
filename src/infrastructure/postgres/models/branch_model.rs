@@ -11,6 +11,7 @@ pub struct BranchModel {
     pub address: Option<String>,
     pub phone: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 // ==================================
@@ -25,6 +26,7 @@ impl From<BranchModel> for BranchEntity {
             address: model.address,
             phone: model.phone,
             created_at: model.created_at,
+            updated_at: model.updated_at,
         }
     }
 }
@@ -37,6 +39,7 @@ impl From<BranchEntity> for BranchModel {
             address: entity.address,
             phone: entity.phone,
             created_at: entity.created_at,
+            updated_at: entity.updated_at,
         }
     }
 }

@@ -9,7 +9,8 @@ CREATE TABLE branches (
     name VARCHAR(100) NOT NULL UNIQUE,
     address TEXT,
     phone VARCHAR(50),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- =====================================================

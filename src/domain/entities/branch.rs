@@ -8,6 +8,7 @@ pub struct BranchEntity {
     pub address: Option<String>,
     pub phone: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl BranchEntity {
@@ -18,12 +19,14 @@ impl BranchEntity {
             Self::validate_phone(p)?;
         }
 
+        let now = Utc::now();
         Ok(Self {
             id: 0,
             name,
             address,
             phone,
-            created_at: Utc::now(),
+            created_at: now,
+            updated_at: now,
         })
     }
 
@@ -42,6 +45,7 @@ impl BranchEntity {
         self.name = name;
         self.address = address;
         self.phone = phone;
+        self.updated_at = Utc::now();
         Ok(())
     }
 

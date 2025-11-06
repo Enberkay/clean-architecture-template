@@ -20,6 +20,7 @@ use crate::{
         postgres::{
             postgres_connector::PgPoolSquad,
             repositories::{
+                branch_repository::PostgresBranchRepository,
                 permission_repository::PostgresPermissionRepository,
                 role_permission_repository::PostgresRolePermissionRepository,
                 role_repository::PostgresRoleRepository,
@@ -29,8 +30,11 @@ use crate::{
         redis::{redis_connector::RedisPool, redis_token_repository::RedisTokenRepository},
     },
     application::services::{
-        auth_service::AuthService, permission_service::PermissionService,
-        role_service::RoleService, user_service::UserService,
+        auth_service::AuthService,
+        branch_service::BranchService,
+        permission_service::PermissionService,
+        role_service::RoleService,
+        user_service::UserService,
     },
 };
 
@@ -48,6 +52,7 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
     let role_repo = Arc::new(PostgresRoleRepository::new(db_pool.as_ref().clone()));
     let perm_repo = Arc::new(PostgresPermissionRepository::new(db_pool.as_ref().clone()));
     let role_perm_repo = Arc::new(PostgresRolePermissionRepository::new(db_pool.as_ref().clone()));
+    let branch_repo = Arc::new(PostgresBranchRepository::new(db_pool.as_ref().clone()));
 
     // --- Security components ---
     let password_repo = Arc::new(Argon2PasswordHasher::new(
@@ -75,6 +80,7 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
         role_perm_repo,
     ));
     let permission_service = Arc::new(PermissionService::new(perm_repo));
+    let branch_service = Arc::new(BranchService::new(branch_repo));
 
     // --- Health router ---
     let health_router = Router::new().route("/health", get(default_router::health_check));
@@ -87,6 +93,7 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
         .nest("/users", routers::user_router::routes(user_service))
         .nest("/roles", routers::role_router::routes(role_service))
         .nest("/permissions", routers::permission_router::routes(permission_service))
+        .nest("/branches", routers::branch_router::routes(branch_service)) // ✅ Added branch routes
         // --- Global middlewares ---
         .layer(TimeoutLayer::new(Duration::from_secs(
             config.server.timeout_seconds.into(),

@@ -1,17 +1,28 @@
 use serde::{Serialize, Deserialize};
+use validator::Validate;
 use crate::domain::entities::branch::BranchEntity;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct CreateBranchRequest {
+    #[validate(length(min = 2, max = 100, message = "Branch name must be 2-100 characters"))]
     pub name: String,
+    
+    #[validate(length(max = 500, message = "Address too long (max 500 chars)"))]
     pub address: Option<String>,
+    
+    #[validate(length(min = 6, max = 20, message = "Phone must be 6-20 characters"))]
     pub phone: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub struct UpdateBranchRequest {
+    #[validate(length(min = 2, max = 100, message = "Branch name must be 2-100 characters"))]
     pub name: Option<String>,
+    
+    #[validate(length(max = 500, message = "Address too long (max 500 chars)"))]
     pub address: Option<String>,
+    
+    #[validate(length(min = 6, max = 20, message = "Phone must be 6-20 characters"))]
     pub phone: Option<String>,
 }
 
@@ -21,6 +32,8 @@ pub struct BranchResponse {
     pub name: String,
     pub address: Option<String>,
     pub phone: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl From<BranchEntity> for BranchResponse {
@@ -30,6 +43,8 @@ impl From<BranchEntity> for BranchResponse {
             name: entity.name,
             address: entity.address,
             phone: entity.phone,
+            created_at: entity.created_at,
+            updated_at: entity.updated_at,
         }
     }
 }

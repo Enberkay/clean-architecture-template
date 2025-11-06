@@ -29,35 +29,38 @@ pub enum ApplicationError {
 }
 
 impl ApplicationError {
+    /// Error for bad requests (validation, etc.)
     pub fn bad_request<T: Into<String>>(msg: T) -> Self {
         Self::BadRequest(msg.into())
     }
 
+    /// Error for unauthorized access
     pub fn unauthorized<T: Into<String>>(msg: T) -> Self {
         Self::Unauthorized(msg.into())
     }
 
+    /// Error for forbidden access
     pub fn forbidden<T: Into<String>>(msg: T) -> Self {
         Self::Forbidden(msg.into())
     }
 
+    /// Error for missing resources
     pub fn not_found<T: Into<String>>(msg: T) -> Self {
         Self::NotFound(msg.into())
     }
 
+    /// Error for conflicts (duplicate, etc.)
     pub fn conflict<T: Into<String>>(msg: T) -> Self {
         Self::Conflict(msg.into())
     }
 
+    /// Error for internal server issues
     pub fn internal<T: Into<String>>(msg: T) -> Self {
         Self::Internal(msg.into())
     }
 }
 
-/// Shortcut alias for application-level Result
-pub type ApplicationResult<T> = Result<T, ApplicationError>;
-
-/// Map ApplicationError → JSON HTTP Response
+/// Map ApplicationError → JSON HTTP Response with proper status codes
 impl IntoResponse for ApplicationError {
     fn into_response(self) -> Response {
         let (status, code) = match self {
@@ -66,7 +69,7 @@ impl IntoResponse for ApplicationError {
             ApplicationError::Forbidden(_) => (StatusCode::FORBIDDEN, "FORBIDDEN"),
             ApplicationError::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             ApplicationError::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
-            ApplicationError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
+            ApplicationError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR"),
         };
 
         let body = json!({
@@ -78,3 +81,6 @@ impl IntoResponse for ApplicationError {
         (status, Json(body)).into_response()
     }
 }
+
+/// Shortcut alias for application-level Result
+pub type ApplicationResult<T> = Result<T, ApplicationError>;
