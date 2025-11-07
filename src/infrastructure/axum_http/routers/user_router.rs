@@ -7,7 +7,7 @@ use validator::Validate;
 
 use crate::application::{
     application_errors::ApplicationError,
-    dtos::user_dto::{CreateUserRequest, UpdateUserRequest, UserResponse},
+    dtos::user_dto::{CreateUserRequest, UpdatePasswordRequest, UpdateUserRequest, UserResponse},
     services::user_service::UserService,
 };
 
@@ -21,6 +21,7 @@ pub fn routes(user_service: Arc<UserService>) -> Router {
         .route("/{id}", delete(delete_user))
         .route("/{id}/deactivate", patch(deactivate_user))
         .route("/{id}/activate", patch(activate_user))
+        .route("/{id}/password", patch(update_password))
         .with_state(user_service)
 }
 
@@ -93,4 +94,16 @@ async fn activate_user(
 ) -> Result<Json<serde_json::Value>, ApplicationError> {
     let user = service.activate_user(id).await?;
     Ok(Json(serde_json::json!({ "status": "activated", "user": user })))
+}
+
+async fn update_password(
+    Path(id): Path<i32>,
+    State(service): State<Arc<UserService>>,
+    Json(payload): Json<UpdatePasswordRequest>,
+) -> Result<Json<serde_json::Value>, ApplicationError> {
+    let user = service.update_password(id, payload).await?;
+    Ok(Json(serde_json::json!({
+        "status": "password_updated",
+        "user": user
+    })))
 }

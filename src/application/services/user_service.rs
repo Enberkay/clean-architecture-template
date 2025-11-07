@@ -2,13 +2,14 @@ use std::sync::Arc;
 use validator::Validate;
 
 use crate::application::application_errors::{ApplicationError, ApplicationResult};
-use crate::application::dtos::user_dto::{CreateUserRequest, UpdateUserRequest, UserResponse, RoleSummary};
+use crate::application::dtos::user_dto::{
+    CreateUserRequest, RoleSummary, UpdatePasswordRequest, UpdateUserRequest, UserResponse,
+};
 use crate::domain::{
     entities::user::UserEntity,
     repositories::{
-        role_repository::RoleRepository,
+        password_repository::PasswordRepository, role_repository::RoleRepository,
         user_repository::UserRepository,
-        password_repository::PasswordRepository,
     },
 };
 
@@ -26,7 +27,11 @@ impl UserService {
         role_repo: Arc<dyn RoleRepository>,
         password_repo: Arc<dyn PasswordRepository>,
     ) -> Self {
-        Self { user_repo, role_repo, password_repo }
+        Self {
+            user_repo,
+            role_repo,
+            password_repo,
+        }
     }
 
     /// Create a new user — now hashes password & supports role assignment
@@ -36,16 +41,22 @@ impl UserService {
             .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
 
         // ตรวจสอบ email ซ้ำ
-        if let Some(_) = self.user_repo.find_by_email(&req.email).await.map_err(|e| {
-            ApplicationError::internal(format!("Database error while checking email: {}", e))
-        })? {
+        if let Some(_) = self
+            .user_repo
+            .find_by_email(&req.email)
+            .await
+            .map_err(|e| {
+                ApplicationError::internal(format!("Database error while checking email: {}", e))
+            })?
+        {
             return Err(ApplicationError::conflict("Email already exists"));
         }
 
         // Hash password ก่อน save
-        let hashed_password = self.password_repo.hash(&req.password).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to hash password: {}", e))
-        })?;
+        let hashed_password =
+            self.password_repo.hash(&req.password).await.map_err(|e| {
+                ApplicationError::internal(format!("Failed to hash password: {}", e))
+            })?;
 
         // สร้าง entity
         let mut user = UserEntity::new(
@@ -61,9 +72,11 @@ impl UserService {
         .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
 
         // Save user
-        let user_id = self.user_repo.save(&user).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to save user: {}", e))
-        })?;
+        let user_id = self
+            .user_repo
+            .save(&user)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to save user: {}", e)))?;
         user.id = user_id;
 
         // Assign roles ถ้ามี role_ids
@@ -73,18 +86,25 @@ impl UserService {
                     ApplicationError::internal(format!("Failed to fetch roles: {}", e))
                 })?;
                 if roles.len() != role_ids.len() {
-                    return Err(ApplicationError::bad_request("Some roles not found".to_string()));
+                    return Err(ApplicationError::bad_request(
+                        "Some roles not found".to_string(),
+                    ));
                 }
-                self.user_repo.assign_roles(user_id, &role_ids).await.map_err(|e| {
-                    ApplicationError::internal(format!("Failed to assign roles: {}", e))
-                })?;
+                self.user_repo
+                    .assign_roles(user_id, &role_ids)
+                    .await
+                    .map_err(|e| {
+                        ApplicationError::internal(format!("Failed to assign roles: {}", e))
+                    })?;
             }
         }
 
         // โหลด roles กลับมาใน response
-        let roles = self.user_repo.find_roles(user_id).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to fetch roles: {}", e))
-        })?;
+        let roles = self
+            .user_repo
+            .find_roles(user_id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to fetch roles: {}", e)))?;
 
         let mut user_response = UserResponse::from(user);
         user_response.roles = roles.into_iter().map(RoleSummary::from).collect();
@@ -113,9 +133,10 @@ impl UserService {
 
     /// Get all users
     pub async fn get_all_users(&self) -> ApplicationResult<Vec<UserResponse>> {
-        let users = self.user_repo.find_all().await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to fetch all users: {}", e))
-        })?;
+        let users =
+            self.user_repo.find_all().await.map_err(|e| {
+                ApplicationError::internal(format!("Failed to fetch all users: {}", e))
+            })?;
 
         let mut users_with_roles = Vec::new();
         for user in users {
@@ -132,11 +153,18 @@ impl UserService {
     }
 
     /// Update user profile (except password)
-    pub async fn update_user(&self, id: i32, req: UpdateUserRequest) -> ApplicationResult<UserResponse> {
+    pub async fn update_user(
+        &self,
+        id: i32,
+        req: UpdateUserRequest,
+    ) -> ApplicationResult<UserResponse> {
         // ตรวจว่าผู้ใช้มีอยู่จริง
-        let _ = match self.user_repo.find_by_id(id).await.map_err(|e| {
-            ApplicationError::internal(format!("Database error: {}", e))
-        })? {
+        let _ = match self
+            .user_repo
+            .find_by_id(id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Database error: {}", e)))?
+        {
             Some(u) => u,
             None => return Err(ApplicationError::not_found("User not found")),
         };
@@ -148,19 +176,21 @@ impl UserService {
         let normalized_sex = req.sex.map(|s| s.to_uppercase());
 
         // Update แบบ COALESCE
-        let updated_user = self.user_repo.update(
-            id,
-            req.first_name,
-            req.last_name,
-            req.email,
-            req.age,
-            normalized_sex,
-            req.phone,
-            req.branch_id,
-            None,
-        ).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to update user: {}", e))
-        })?;
+        let updated_user = self
+            .user_repo
+            .update(
+                id,
+                req.first_name,
+                req.last_name,
+                req.email,
+                req.age,
+                normalized_sex,
+                req.phone,
+                req.branch_id,
+                None,
+            )
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to update user: {}", e)))?;
 
         let roles = self.user_repo.find_roles(id).await.map_err(|e| {
             ApplicationError::internal(format!("Failed to fetch user roles: {}", e))
@@ -174,9 +204,12 @@ impl UserService {
 
     /// Delete user
     pub async fn delete_user(&self, id: i32) -> ApplicationResult<UserResponse> {
-        let user = match self.user_repo.find_by_id(id).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to fetch user: {}", e))
-        })? {
+        let user = match self
+            .user_repo
+            .find_by_id(id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to fetch user: {}", e)))?
+        {
             Some(u) => u,
             None => return Err(ApplicationError::not_found("User not found")),
         };
@@ -185,9 +218,10 @@ impl UserService {
             ApplicationError::internal(format!("Failed to fetch user roles: {}", e))
         })?;
 
-        self.user_repo.delete(id).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to delete user: {}", e))
-        })?;
+        self.user_repo
+            .delete(id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to delete user: {}", e)))?;
 
         let mut user_response = UserResponse::from(user);
         user_response.roles = roles.into_iter().map(RoleSummary::from).collect();
@@ -200,31 +234,39 @@ impl UserService {
     // =====================================================
 
     pub async fn assign_roles(&self, user_id: i32, role_ids: Vec<i32>) -> ApplicationResult<()> {
-        let user_opt = self.user_repo.find_by_id(user_id).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to fetch user: {}", e))
-        })?;
+        let user_opt = self
+            .user_repo
+            .find_by_id(user_id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to fetch user: {}", e)))?;
 
         if user_opt.is_none() {
             return Err(ApplicationError::not_found("User not found"));
         }
 
-        let roles = self.role_repo.find_by_ids(&role_ids).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to fetch roles: {}", e))
-        })?;
+        let roles = self
+            .role_repo
+            .find_by_ids(&role_ids)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to fetch roles: {}", e)))?;
 
         if roles.len() != role_ids.len() {
-            return Err(ApplicationError::bad_request("Some roles not found".to_string()));
+            return Err(ApplicationError::bad_request(
+                "Some roles not found".to_string(),
+            ));
         }
 
-        self.user_repo.assign_roles(user_id, &role_ids).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to assign roles: {}", e))
-        })
+        self.user_repo
+            .assign_roles(user_id, &role_ids)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to assign roles: {}", e)))
     }
 
     pub async fn remove_roles(&self, user_id: i32, role_ids: Vec<i32>) -> ApplicationResult<()> {
-        self.user_repo.remove_roles(user_id, &role_ids).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to remove roles: {}", e))
-        })
+        self.user_repo
+            .remove_roles(user_id, &role_ids)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to remove roles: {}", e)))
     }
 
     pub async fn get_user_roles(&self, user_id: i32) -> ApplicationResult<Vec<String>> {
@@ -237,9 +279,12 @@ impl UserService {
     /// Deactivate user (soft delete)
     pub async fn deactivate_user(&self, id: i32) -> ApplicationResult<UserResponse> {
         // ตรวจว่าผู้ใช้มีอยู่จริง
-        let mut user = match self.user_repo.find_by_id(id).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to fetch user: {}", e))
-        })? {
+        let mut user = match self
+            .user_repo
+            .find_by_id(id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to fetch user: {}", e)))?
+        {
             Some(u) => u,
             None => return Err(ApplicationError::not_found("User not found")),
         };
@@ -248,19 +293,21 @@ impl UserService {
         user.deactivate();
 
         // อัปเดตใน database
-        let updated_user = self.user_repo.update(
-            user.id,
-            Some(user.first_name.clone()),
-            Some(user.last_name.clone()),
-            Some(user.email.as_str().to_string()),
-            Some(user.age),
-            Some(user.sex.clone()),
-            Some(user.phone.clone()),
-            user.branch_id,
-            Some(user.is_active), // <- is_active = false
-        ).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to deactivate user: {}", e))
-        })?;
+        let updated_user = self
+            .user_repo
+            .update(
+                user.id,
+                Some(user.first_name.clone()),
+                Some(user.last_name.clone()),
+                Some(user.email.as_str().to_string()),
+                Some(user.age),
+                Some(user.sex.clone()),
+                Some(user.phone.clone()),
+                user.branch_id,
+                Some(user.is_active), // <- is_active = false
+            )
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to deactivate user: {}", e)))?;
 
         // โหลด roles กลับมาใน response
         let roles = self.user_repo.find_roles(user.id).await.map_err(|e| {
@@ -276,9 +323,12 @@ impl UserService {
     /// Reactivate user (soft restore)
     pub async fn activate_user(&self, id: i32) -> ApplicationResult<UserResponse> {
         // ตรวจว่าผู้ใช้มีอยู่จริง
-        let mut user = match self.user_repo.find_by_id(id).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to fetch user: {}", e))
-        })? {
+        let mut user = match self
+            .user_repo
+            .find_by_id(id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to fetch user: {}", e)))?
+        {
             Some(u) => u,
             None => return Err(ApplicationError::not_found("User not found")),
         };
@@ -287,19 +337,21 @@ impl UserService {
         user.activate();
 
         // อัปเดตใน database
-        let updated_user = self.user_repo.update(
-            user.id,
-            Some(user.first_name.clone()),
-            Some(user.last_name.clone()),
-            Some(user.email.as_str().to_string()),
-            Some(user.age),
-            Some(user.sex.clone()),
-            Some(user.phone.clone()),
-            user.branch_id,
-            Some(user.is_active), // <- true
-        ).await.map_err(|e| {
-            ApplicationError::internal(format!("Failed to activate user: {}", e))
-        })?;
+        let updated_user = self
+            .user_repo
+            .update(
+                user.id,
+                Some(user.first_name.clone()),
+                Some(user.last_name.clone()),
+                Some(user.email.as_str().to_string()),
+                Some(user.age),
+                Some(user.sex.clone()),
+                Some(user.phone.clone()),
+                user.branch_id,
+                Some(user.is_active), // <- true
+            )
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to activate user: {}", e)))?;
 
         // โหลด roles กลับมาใน response
         let roles = self.user_repo.find_roles(user.id).await.map_err(|e| {
@@ -312,4 +364,64 @@ impl UserService {
         Ok(user_response)
     }
 
+    /// Change user's password (re-hash)
+    pub async fn update_password(
+        &self,
+        id: i32,
+        req: UpdatePasswordRequest,
+    ) -> ApplicationResult<UserResponse> {
+        // Validate payload
+        req.validate()
+            .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
+
+        // หา user ก่อน
+        let mut user = match self
+            .user_repo
+            .find_by_id(id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to fetch user: {}", e)))?
+        {
+            Some(u) => u,
+            None => return Err(ApplicationError::not_found("User not found")),
+        };
+
+        // Hash password ใหม่
+        let hashed = self
+            .password_repo
+            .hash(&req.new_password)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to hash password: {}", e)))?;
+
+        // อัปเดตใน domain
+        user.change_password(hashed)
+            .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
+
+        // Update เฉพาะ password + updated_at
+        let updated_user = self
+            .user_repo
+            .update(
+                user.id,
+                Some(user.first_name.clone()),
+                Some(user.last_name.clone()),
+                Some(user.email.as_str().to_string()),
+                Some(user.age),
+                Some(user.sex.clone()),
+                Some(user.phone.clone()),
+                user.branch_id,
+                Some(user.is_active),
+            )
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to update password: {}", e)))?;
+
+        let roles = self
+            .user_repo
+            .find_roles(user.id)
+            .await
+            .map_err(|e| ApplicationError::internal(format!("Failed to fetch roles: {}", e)))?;
+
+        let mut user_response = UserResponse::from(updated_user);
+        user_response.roles = roles.into_iter().map(RoleSummary::from).collect();
+
+        Ok(user_response)
+    }
 }

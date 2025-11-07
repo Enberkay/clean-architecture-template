@@ -53,6 +53,12 @@ pub struct UpdateUserRequest {
     pub branch_id: Option<i32>,
 }
 
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdatePasswordRequest {
+    #[validate(length(min = 8, message = "Password must be at least 8 characters long"))]
+    pub new_password: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct RoleSummary {
     pub id: i32,
