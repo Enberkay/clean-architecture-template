@@ -1,6 +1,7 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-use crate::domain::entities::user::UserEntity;
+use crate::domain::entities::{role::RoleEntity, user::UserEntity};
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateUserRequest {
@@ -26,6 +27,7 @@ pub struct CreateUserRequest {
     pub password: String,
 
     pub branch_id: Option<i32>,
+    pub role_ids: Option<Vec<i32>>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -52,6 +54,13 @@ pub struct UpdateUserRequest {
 }
 
 #[derive(Debug, Serialize)]
+pub struct RoleSummary {
+    pub id: i32,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct UserResponse {
     pub id: i32,
     pub full_name: String,
@@ -61,8 +70,9 @@ pub struct UserResponse {
     pub phone: String,
     pub branch_id: Option<i32>,
     pub is_active: bool,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub roles: Vec<RoleSummary>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<UserEntity> for UserResponse {
@@ -76,8 +86,19 @@ impl From<UserEntity> for UserResponse {
             phone: user.phone,
             branch_id: user.branch_id,
             is_active: user.is_active,
+            roles: Vec::new(),
             created_at: user.created_at,
             updated_at: user.updated_at,
+        }
+    }
+}
+
+impl From<RoleEntity> for RoleSummary {
+    fn from(role: RoleEntity) -> Self {
+        Self {
+            id: role.id,
+            name: role.name,
+            description: role.description,
         }
     }
 }

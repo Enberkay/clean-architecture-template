@@ -4,7 +4,7 @@ use axum::{
     routing::{get, post, put, delete},
     Json, Router,
 };
-use serde_json::json;
+
 use validator::Validate;
 
 use crate::application::{
@@ -60,21 +60,21 @@ async fn update_user(
     State(service): State<Arc<UserService>>,
     Path(id): Path<i32>,
     Json(payload): Json<UpdateUserRequest>,
-) -> Result<Json<serde_json::Value>, ApplicationError> {
+) -> Result<Json<UserResponse>, ApplicationError> {
     //Validate request payload
     payload
         .validate()
         .map_err(|e| ApplicationError::bad_request(e.to_string()))?;
 
-    service.update_user(id, payload).await?;
-    Ok(Json(json!({ "status": "success" })))
+    // Update and return updated user data
+    Ok(Json(service.update_user(id, payload).await?))
 }
 
 /// DELETE /users/{id}
 async fn delete_user(
     State(service): State<Arc<UserService>>,
     Path(id): Path<i32>,
-) -> Result<Json<serde_json::Value>, ApplicationError> {
-    service.delete_user(id).await?;
-    Ok(Json(json!({ "status": "deleted" })))
+) -> Result<Json<UserResponse>, ApplicationError> {
+    // Delete and return deleted user data
+    Ok(Json(service.delete_user(id).await?))
 }

@@ -69,11 +69,11 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
     // --- Services ---
     let auth_service = Arc::new(AuthService::new(
         user_repo.clone(),
-        password_repo,
+        password_repo.clone(),
         jwt_repo.clone(),
         redis_token_repo,
     ));
-    let user_service = Arc::new(UserService::new(user_repo.clone(), role_repo.clone()));
+    let user_service = Arc::new(UserService::new(user_repo.clone(), role_repo.clone(),password_repo.clone(),));
     let role_service = Arc::new(RoleService::new(
         role_repo,
         perm_repo.clone(),

@@ -92,48 +92,59 @@ impl UserRepository for PostgresUserRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        let id: i32 = row.try_get("id")?;
-        Ok(id)
+        Ok(row.try_get("id")?)
     }
 
-    async fn update(&self, user: &UserEntity) -> Result<()> {
-        sqlx::query!(
+    async fn update(
+        &self,
+        id: i32,
+        first_name: Option<String>,
+        last_name: Option<String>,
+        email: Option<String>,
+        age: Option<i32>,
+        sex: Option<String>,
+        phone: Option<String>,
+        branch_id: Option<i32>,
+        is_active: Option<bool>,
+    ) -> Result<UserEntity> {
+        let result = sqlx::query_as!(
+            UserModel,
             r#"
             UPDATE users
-            SET fname = $1,
-                lname = $2,
-                email = $3,
-                age = $4,
-                sex = $5,
-                phone = $6,
-                branch_id = $7,
-                is_active = $8,
-                updated_at = $9
-            WHERE id = $10
+            SET
+                fname = COALESCE($1, fname),
+                lname = COALESCE($2, lname),
+                email = COALESCE($3, email),
+                age = COALESCE($4, age),
+                sex = COALESCE($5, sex),
+                phone = COALESCE($6, phone),
+                branch_id = COALESCE($7, branch_id),
+                is_active = COALESCE($8, is_active),
+                updated_at = NOW()
+            WHERE id = $9
+            RETURNING id, fname, lname, email, age, sex, phone, password,
+                      branch_id, is_active, created_at, updated_at
             "#,
-            user.first_name,
-            user.last_name,
-            user.email.as_str(),
-            user.age,
-            user.sex,
-            user.phone,
-            user.branch_id,
-            user.is_active,
-            user.updated_at,
-            user.id
+            first_name.as_deref(),
+            last_name.as_deref(),
+            email.as_deref(),
+            age,
+            sex.as_deref(),
+            phone.as_deref(),
+            branch_id,
+            is_active,
+            id,
         )
-        .execute(&self.pool)
+        .fetch_one(&self.pool)
         .await?;
-        Ok(())
+
+        Ok(UserEntity::from(result))
     }
 
     async fn delete(&self, id: i32) -> Result<()> {
-        sqlx::query!(
-            "DELETE FROM users WHERE id = $1",
-            id
-        )
-        .execute(&self.pool)
-        .await?;
+        sqlx::query!("DELETE FROM users WHERE id = $1", id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 

@@ -27,6 +27,8 @@ pub struct UserModel {
     pub updated_at: DateTime<Utc>,
 }
 
+
+
 // ==================================
 // Mapping between Entity ↔ Model
 // ==================================
