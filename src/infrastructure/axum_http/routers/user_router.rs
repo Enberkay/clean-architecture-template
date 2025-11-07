@@ -1,8 +1,6 @@
 use std::sync::Arc;
 use axum::{
-    extract::{Path, State},
-    routing::{get, post, put, delete},
-    Json, Router,
+    Json, Router, extract::{Path, State}, response::IntoResponse, routing::{delete, get, patch, post, put}
 };
 
 use validator::Validate;
@@ -21,6 +19,7 @@ pub fn routes(user_service: Arc<UserService>) -> Router {
         .route("/{id}", get(get_user_by_id))
         .route("/{id}", put(update_user))
         .route("/{id}", delete(delete_user))
+        .route("/{id}/deactivate", patch(deactivate_user))
         .with_state(user_service)
 }
 
@@ -77,4 +76,12 @@ async fn delete_user(
 ) -> Result<Json<UserResponse>, ApplicationError> {
     // Delete and return deleted user data
     Ok(Json(service.delete_user(id).await?))
+}
+
+async fn deactivate_user(
+    Path(id): Path<i32>,
+    State(user_service): State<Arc<UserService>>,
+) -> Result<impl IntoResponse, ApplicationError> {
+    let user = user_service.deactivate_user(id).await?;
+    Ok(Json(user))
 }

@@ -233,4 +233,44 @@ impl UserService {
         })?;
         Ok(roles.into_iter().map(|r| r.name).collect())
     }
+
+    /// Deactivate user (soft delete)
+    pub async fn deactivate_user(&self, id: i32) -> ApplicationResult<UserResponse> {
+        // ตรวจว่าผู้ใช้มีอยู่จริง
+        let mut user = match self.user_repo.find_by_id(id).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to fetch user: {}", e))
+        })? {
+            Some(u) => u,
+            None => return Err(ApplicationError::not_found("User not found")),
+        };
+
+        // เปลี่ยนสถานะใน domain entity
+        user.deactivate();
+
+        // อัปเดตใน database
+        let updated_user = self.user_repo.update(
+            user.id,
+            Some(user.first_name.clone()),
+            Some(user.last_name.clone()),
+            Some(user.email.as_str().to_string()),
+            Some(user.age),
+            Some(user.sex.clone()),
+            Some(user.phone.clone()),
+            user.branch_id,
+            Some(user.is_active), // <- is_active = false
+        ).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to deactivate user: {}", e))
+        })?;
+
+        // โหลด roles กลับมาใน response
+        let roles = self.user_repo.find_roles(user.id).await.map_err(|e| {
+            ApplicationError::internal(format!("Failed to fetch user roles: {}", e))
+        })?;
+
+        let mut user_response = UserResponse::from(updated_user);
+        user_response.roles = roles.into_iter().map(RoleSummary::from).collect();
+
+        Ok(user_response)
+    }
+
 }
