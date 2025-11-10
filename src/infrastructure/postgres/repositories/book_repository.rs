@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::book::BookEntity,
@@ -21,7 +21,7 @@ impl PostgresBookRepository {
 
 #[async_trait]
 impl BookRepository for PostgresBookRepository {
-    async fn find_by_isbn(&self, isbn: &Isbn13) -> Result<Option<BookEntity>> {
+    async fn find_by_isbn(&self, isbn: &Isbn13) > {
         let result = sqlx::query_as::<_, BookModel>(
             r#"
             SELECT isbn, title, author, synopsis, price, is_active, created_at, updated_at
@@ -36,7 +36,7 @@ impl BookRepository for PostgresBookRepository {
         Ok(result.map(BookEntity::from))
     }
 
-    async fn find_all(&self, limit: u32, offset: u32) -> Result<Vec<BookEntity>> {
+    async fn find_all(&self, limit: u32, offset: u32) > {
         let results = sqlx::query_as::<_, BookModel>(
             r#"
             SELECT isbn, title, author, synopsis, price, is_active, created_at, updated_at
@@ -53,7 +53,7 @@ impl BookRepository for PostgresBookRepository {
         Ok(results.into_iter().map(BookEntity::from).collect())
     }
 
-    async fn save(&self, book: &BookEntity) -> Result<()> {
+    async fn save(&self, book: &BookEntity) -> anyhow::Result<()> {
         sqlx::query!(
             r#"
             INSERT INTO books (isbn, title, author, synopsis, price, is_active, created_at, updated_at)
@@ -82,7 +82,7 @@ impl BookRepository for PostgresBookRepository {
         Ok(())
     }
 
-    async fn delete(&self, isbn: &Isbn13) -> Result<()> {
+    async fn delete(&self, isbn: &Isbn13) -> anyhow::Result<()> {
         sqlx::query!(
             r#"DELETE FROM books WHERE isbn = $1"#,
             isbn.to_string()

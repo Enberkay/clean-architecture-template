@@ -1,5 +1,4 @@
 use crate::domain::entities::order::{OrderEntity, OrderItemEntity};
-use anyhow::Result;
 use async_trait::async_trait;
 
 #[async_trait]

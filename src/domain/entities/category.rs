@@ -1,4 +1,4 @@
-use crate::domain::domain_errors::{DomainError, DomainResult};
+use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -12,7 +12,7 @@ pub struct CategoryEntity {
 
 impl CategoryEntity {
     /// Create a new category with validation.
-    pub fn new(name: String, description: Option<String>) -> DomainResult<Self> {
+    pub fn new(name: String, description: Option<String>) -> Result<Self> {
         Self::validate_name(&name)?;
         if let Some(desc) = &description {
             Self::validate_description(desc)?;
@@ -29,7 +29,7 @@ impl CategoryEntity {
     }
 
     /// Rename the category (validated)
-    pub fn rename(&mut self, new_name: String) -> DomainResult<()> {
+    pub fn rename(&mut self, new_name: String) -> Result<()> {
         Self::validate_name(&new_name)?;
         self.name = new_name;
         self.updated_at = Utc::now();
@@ -37,7 +37,7 @@ impl CategoryEntity {
     }
 
     /// Update description (empty string not allowed)
-    pub fn update_description(&mut self, desc: Option<String>) -> DomainResult<()> {
+    pub fn update_description(&mut self, desc: Option<String>) -> Result<()> {
         if let Some(d) = &desc {
             Self::validate_description(d)?;
         }
@@ -55,19 +55,19 @@ impl CategoryEntity {
     // Internal validators
     // ==========================
 
-    fn validate_name(name: &str) -> DomainResult<()> {
+    fn validate_name(name: &str) -> Result<()> {
         if name.trim().is_empty() {
-            return Err(DomainError::validation("Category name cannot be empty"));
+            return Err(anyhow!("Category name cannot be empty"));
         }
         if name.len() > 100 {
-            return Err(DomainError::validation("Category name is too long (max 100 chars)"));
+            return Err(anyhow!("Category name is too long (max 100 chars)"));
         }
         Ok(())
     }
 
-    fn validate_description(desc: &str) -> DomainResult<()> {
+    fn validate_description(desc: &str) -> Result<()> {
         if desc.trim().is_empty() {
-            return Err(DomainError::validation("Description cannot be empty"));
+            return Err(anyhow!("Description cannot be empty"));
         }
         Ok(())
     }

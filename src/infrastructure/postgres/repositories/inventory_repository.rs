@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::inventory::InventoryEntity,
@@ -21,7 +21,7 @@ impl PostgresInventoryRepository {
 
 #[async_trait]
 impl InventoryRepository for PostgresInventoryRepository {
-    async fn find(&self, branch_id: i32, isbn: &Isbn13) -> Result<Option<InventoryEntity>> {
+    async fnOption<InventoryEntity>> {
         let result = sqlx::query_as::<_, InventoryModel>(
             r#"
             SELECT branch_id, book_isbn, quantity, updated_at
@@ -37,7 +37,7 @@ impl InventoryRepository for PostgresInventoryRepository {
         Ok(result.map(InventoryEntity::from))
     }
 
-    async fn save(&self, inventory: &InventoryEntity) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             INSERT INTO inventories (branch_id, book_isbn, quantity, updated_at)
@@ -58,7 +58,7 @@ impl InventoryRepository for PostgresInventoryRepository {
         Ok(())
     }
 
-    async fn update(&self, inventory: &InventoryEntity) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             UPDATE inventories

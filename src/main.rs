@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use bookstore_backend::{
     config::config_loader,
-    infrastructure::{axum_http::http_serve::start_server, postgres::postgres_connector},
+    infrastructure::postgres::postgres_connector,
+    presentation::http::http_serve::start_server,
 };
 use tracing::{error, info};
 

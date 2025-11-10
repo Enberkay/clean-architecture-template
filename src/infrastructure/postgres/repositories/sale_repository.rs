@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::sale::{SaleEntity, SaleItemEntity},
@@ -20,7 +20,7 @@ impl PostgresSaleRepository {
 
 #[async_trait]
 impl SaleRepository for PostgresSaleRepository {
-    async fn find_by_id(&self, id: i32) -> Result<Option<SaleEntity>> {
+    async fnOption<SaleEntity>> {
         let result = sqlx::query_as::<_, SaleModel>(
             r#"
             SELECT id, employee_id, branch_id, sale_date,
@@ -36,7 +36,7 @@ impl SaleRepository for PostgresSaleRepository {
         Ok(result.map(SaleEntity::from))
     }
 
-    async fn find_items(&self, sale_id: i32) -> Result<Vec<SaleItemEntity>> {
+    async fnVec<SaleItemEntity>> {
         let results = sqlx::query_as::<_, SaleItemModel>(
             r#"
             SELECT id, sale_id, book_isbn, book_title, book_author,
@@ -53,7 +53,7 @@ impl SaleRepository for PostgresSaleRepository {
         Ok(results.into_iter().map(SaleItemEntity::from).collect())
     }
 
-    async fn save(&self, sale: &SaleEntity) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             INSERT INTO sales (id, employee_id, branch_id, sale_date, total_amount, payment_method, created_at)
@@ -80,7 +80,7 @@ impl SaleRepository for PostgresSaleRepository {
         Ok(())
     }
 
-    async fn save_items(&self, items: &[SaleItemEntity]) -> Result<()> {
+    async fn()> {
         for item in items {
             sqlx::query!(
                 r#"
@@ -113,7 +113,7 @@ impl SaleRepository for PostgresSaleRepository {
         Ok(())
     }
 
-    async fn delete(&self, id: i32) -> Result<()> {
+    async fn()> {
         let mut tx = self.pool.begin().await?;
 
         sqlx::query!("DELETE FROM sale_items WHERE sale_id = $1", id)

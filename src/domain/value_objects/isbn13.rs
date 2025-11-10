@@ -1,20 +1,20 @@
-use crate::domain::domain_errors::{DomainError, DomainResult};
+use anyhow::{Result, anyhow};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Isbn13(String);
 
 impl Isbn13 {
-    pub fn new(value: &str) -> DomainResult<Self> {
+    pub fn new(value: &str) -> Result<Self> {
         let trimmed = value.trim().replace("-", "");
         if trimmed.len() != 13 || !trimmed.chars().all(|c| c.is_ascii_digit()) {
-            return Err(DomainError::validation(
+            return Err(anyhow!(
                 "ISBN-13 must contain exactly 13 digits",
             ));
         }
 
         if !Self::is_valid_checksum(&trimmed) {
-            return Err(DomainError::validation("Invalid ISBN-13 checksum"));
+            return Err(anyhow!("Invalid ISBN-13 checksum"));
         }
 
         Ok(Self(trimmed))

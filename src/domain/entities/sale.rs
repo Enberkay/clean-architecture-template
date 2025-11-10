@@ -1,5 +1,5 @@
+use anyhow::{Result, anyhow};
 use crate::domain::{
-    domain_errors::{DomainError, DomainResult},
     value_objects::money::Money,
 };
 use chrono::{DateTime, Utc};
@@ -35,7 +35,7 @@ impl SaleEntity {
         employee_id: Option<i32>,
         branch_id: Option<i32>,
         payment_method: String,
-    ) -> DomainResult<Self> {
+    ) -> Result<Self> {
         Self::validate_payment_method(&payment_method)?;
         let now = Utc::now();
         Ok(Self {
@@ -50,9 +50,9 @@ impl SaleEntity {
     }
 
     /// Update total amount (must not be negative)
-    pub fn update_total(&mut self, new_total: Money) -> DomainResult<()> {
+    pub fn update_total(&mut self, new_total: Money) -> Result<()> {
         if new_total.value() < Decimal::ZERO {
-            return Err(DomainError::validation("Total amount cannot be negative"));
+            return Err(anyhow!("Total amount cannot be negative"));
         }
         self.total_amount = new_total;
         Ok(())
@@ -64,7 +64,7 @@ impl SaleEntity {
     }
 
     /// Recalculate total from items
-    pub fn calculate_total(&mut self, items: &[SaleItemEntity]) -> DomainResult<()> {
+    pub fn calculate_total(&mut self, items: &[SaleItemEntity]) -> Result<()> {
         let mut sum = Money::zero();
         for item in items {
             sum = sum.add(item.subtotal);
@@ -73,21 +73,21 @@ impl SaleEntity {
     }
 
     /// Validate all sale details before persisting
-    pub fn validate(&self) -> DomainResult<()> {
+    pub fn validate(&self) -> Result<()> {
         if self.payment_method.trim().is_empty() {
-            return Err(DomainError::validation("Payment method cannot be empty"));
+            return Err(anyhow!("Payment method cannot be empty"));
         }
         if self.total_amount.value() < Decimal::ZERO {
-            return Err(DomainError::validation("Invalid total amount"));
+            return Err(anyhow!("Invalid total amount"));
         }
         Ok(())
     }
 
-    fn validate_payment_method(method: &str) -> DomainResult<()> {
+    fn validate_payment_method(method: &str) -> Result<()> {
         let valid = ["CASH", "CARD", "PROMPTPAY", "TRANSFER"];
         let upper = method.trim().to_uppercase();
         if !valid.contains(&upper.as_str()) {
-            return Err(DomainError::validation(format!(
+            return Err(anyhow!(format!(
                 "Invalid payment method: {}",
                 method
             )));
@@ -116,7 +116,7 @@ impl SaleItemEntity {
         book_author: Option<String>,
         quantity: i32,
         price_at_sale: Money,
-    ) -> DomainResult<Self> {
+    ) -> Result<Self> {
         Self::validate_quantity(quantity)?;
         let subtotal = price_at_sale.multiply(quantity as u32);
 
@@ -134,25 +134,25 @@ impl SaleItemEntity {
     }
 
     /// Update quantity (must be > 0)
-    pub fn update_quantity(&mut self, new_qty: i32) -> DomainResult<()> {
+    pub fn update_quantity(&mut self, new_qty: i32) -> Result<()> {
         Self::validate_quantity(new_qty)?;
         self.quantity = new_qty;
         self.subtotal = self.price_at_sale.multiply(new_qty as u32);
         Ok(())
     }
 
-    fn validate_quantity(qty: i32) -> DomainResult<()> {
+    fn validate_quantity(qty: i32) -> Result<()> {
         if qty <= 0 {
-            return Err(DomainError::validation("Quantity must be greater than zero"));
+            return Err(anyhow!("Quantity must be greater than zero"));
         }
         Ok(())
     }
 
     /// Validate this item
-    pub fn validate(&self) -> DomainResult<()> {
+    pub fn validate(&self) -> Result<()> {
         Self::validate_quantity(self.quantity)?;
         if self.subtotal.value() <= Decimal::ZERO {
-            return Err(DomainError::validation("Subtotal must be greater than zero"));
+            return Err(anyhow!("Subtotal must be greater than zero"));
         }
         Ok(())
     }

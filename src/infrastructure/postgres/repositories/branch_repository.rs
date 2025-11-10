@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::branch::BranchEntity,
@@ -20,7 +20,7 @@ impl PostgresBranchRepository {
 
 #[async_trait]
 impl BranchRepository for PostgresBranchRepository {
-    async fn find_all(&self) -> Result<Vec<BranchEntity>> {
+    async fn find_all(&self) > {
         let results = sqlx::query_as::<_, BranchModel>(
             r#"
             SELECT id, name, address, phone, created_at, updated_at
@@ -34,7 +34,7 @@ impl BranchRepository for PostgresBranchRepository {
         Ok(results.into_iter().map(BranchEntity::from).collect())
     }
 
-    async fn find_by_id(&self, id: i32) -> Result<Option<BranchEntity>> {
+    async fnOption<BranchEntity>> {
         let result = sqlx::query_as::<_, BranchModel>(
             r#"
             SELECT id, name, address, phone, created_at, updated_at
@@ -49,7 +49,7 @@ impl BranchRepository for PostgresBranchRepository {
         Ok(result.map(BranchEntity::from))
     }
 
-    async fn save(&self, branch: &BranchEntity) -> Result<i32> {
+    async fni32> {
         let result = sqlx::query!(
             r#"
             INSERT INTO branches (name, address, phone, created_at, updated_at)
@@ -98,7 +98,7 @@ impl BranchRepository for PostgresBranchRepository {
         Ok(BranchEntity::from(result))
     }
 
-    async fn delete(&self, id: i32) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             DELETE FROM branches

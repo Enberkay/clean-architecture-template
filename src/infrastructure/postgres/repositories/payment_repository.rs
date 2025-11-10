@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::payment::PaymentEntity,
@@ -20,7 +20,7 @@ impl PostgresPaymentRepository {
 
 #[async_trait]
 impl PaymentRepository for PostgresPaymentRepository {
-    async fn find_by_id(&self, id: i32) -> Result<Option<PaymentEntity>> {
+    async fnOption<PaymentEntity>> {
         let result = sqlx::query_as::<_, PaymentModel>(
             r#"
             SELECT id, order_id, sale_id, payment_method, transaction_ref,
@@ -36,7 +36,7 @@ impl PaymentRepository for PostgresPaymentRepository {
         Ok(result.map(PaymentEntity::from))
     }
 
-    async fn find_by_order(&self, order_id: i32) -> Result<Vec<PaymentEntity>> {
+    async fnVec<PaymentEntity>> {
         let results = sqlx::query_as::<_, PaymentModel>(
             r#"
             SELECT id, order_id, sale_id, payment_method, transaction_ref,
@@ -53,7 +53,7 @@ impl PaymentRepository for PostgresPaymentRepository {
         Ok(results.into_iter().map(PaymentEntity::from).collect())
     }
 
-    async fn save(&self, payment: &PaymentEntity) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             INSERT INTO payments

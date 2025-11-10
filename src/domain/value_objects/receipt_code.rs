@@ -1,4 +1,4 @@
-use crate::domain::domain_errors::{DomainError, DomainResult};
+use anyhow::{Result, anyhow};
 use chrono::{Datelike, Utc};
 use std::fmt;
 
@@ -7,11 +7,11 @@ pub struct ReceiptCode(String);
 
 impl ReceiptCode {
     /// Create a new validated receipt code.
-    pub fn new(value: &str) -> DomainResult<Self> {
+    pub fn new(value: &str) -> Result<Self> {
         let trimmed = value.trim();
 
         if !Self::is_valid_format(trimmed) {
-            return Err(DomainError::validation(format!(
+            return Err(anyhow!(format!(
                 "Invalid receipt code format: {}",
                 trimmed
             )));
@@ -22,7 +22,7 @@ impl ReceiptCode {
 
     /// Generate a new ReceiptCode automatically.
     /// Example: "POS-2025-00042"
-    pub fn generate(prefix: &str, sequence: u32) -> DomainResult<Self> {
+    pub fn generate(prefix: &str, sequence: u32) -> Result<Self> {
         let year = Utc::now().year();
         let code = format!("{}-{}-{:05}", prefix.to_uppercase(), year, sequence);
         Self::new(&code)

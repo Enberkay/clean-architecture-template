@@ -1,0 +1,190 @@
+use std::sync::Arc;
+use crate::application::{
+    dtos::auth_dto::{LoginRequest, LoginResponse, RefreshResponse, RegisterRequest, RegisterResponse, UserInfo},
+};
+use anyhow::{Result, anyhow};
+use crate::{
+    domain::repositories::user_repository::UserRepository,
+    infrastructure::{
+        security::argon2::PasswordService,
+        JwtService,
+    },
+};
+
+/// AuthUseCase จัดการ Authentication flow ทั้งหมด (AT/RT Stateless)
+pub struct AuthUseCase {
+    user_repo: Arc<dyn UserRepository>,
+    password_repo: Arc<dyn PasswordService>,
+    jwt_repo: Arc<dyn JwtService>,
+}
+
+impl AuthUseCase {
+    pub fn new(
+        user_repo: Arc<dyn UserRepository>,
+        password_repo: Arc<dyn PasswordService>,
+        jwt_repo: Arc<dyn JwtService>,
+    ) -> Self {
+        Self {
+            user_repo,
+            password_repo,
+            jwt_repo,
+        }
+    }
+
+    /// สมัครสมาชิกใหม่
+    pub async fn register(&self, req: RegisterRequest) -> Result<RegisterResponse> {
+        // ตรวจสอบว่าอีเมลซ้ำไหม
+        if let Some(_) = self.user_repo.find_by_email(&req.email).await.map_err(|e| {
+            anyhow!("Database error while checking email: {}", e)
+        })? {
+            return Err(anyhow!("Email already exists"));
+        }
+
+        // hash password
+        let hashed_password = self.password_repo.hash_password(&req.password).await.map_err(|e| {
+            anyhow!("Failed to hash password: {}", e)
+        })?;
+
+        // สร้าง user entity
+        let user = crate::domain::entities::user::UserEntity::new(
+            req.fname,
+            req.lname,
+            req.email,
+            req.age,
+            req.sex,
+            req.phone,
+            hashed_password,
+            None,
+        )
+        .map_err(|e| anyhow!("{}", e))?;
+
+        //save user
+        let user_id = self.user_repo.save(&user).await.map_err(|e| {
+            anyhow!("Failed to save user: {}", e)
+        })?;
+
+        Ok(RegisterResponse {
+            id: user_id,
+            email: user.email.as_str().to_string(),
+            fname: user.first_name.clone(),
+            lname: user.last_name.clone(),
+        })
+    }
+
+    /// เข้าสู่ระบบ - สร้างทั้ง AT และ RT
+    pub async fn login(&self, req: LoginRequest) -> Result<(LoginResponse, String, String)> {
+        // ค้นหาผู้ใช้
+        let user_opt = self.user_repo.find_by_email(&req.email).await.map_err(|e| {
+            anyhow!("Database error while fetching user: {}", e)
+        })?;
+
+        let user = match user_opt {
+            Some(u) => u,
+            None => return Err(anyhow!("Invalid credentials")),
+        };
+
+        // ตรวจรหัสผ่าน
+        let valid = self.password_repo.verify_password(&req.password, &user.password).await.map_err(|e| {
+            anyhow!("Failed to verify password: {}", e)
+        })?;
+
+        if !valid {
+            return Err(anyhow!("Invalid credentials"));
+        }
+
+        // ดึง roles และ permissions ของ user (mock data สำหรับตอนนี้)
+        let roles = vec!["USER".to_string()];
+        let permissions = vec!["READ_BOOKS".to_string(), "CREATE_ORDERS".to_string()];
+
+        // สร้าง Access Token (15 นาที)
+        let access_token = self
+            .jwt_repo
+            .generate_access_token(user.id, &roles, &permissions)
+            .await
+            .map_err(|e| anyhow!("Failed to create access token: {}", e))?;
+
+        // สร้าง Refresh Token (7 วัน)
+        let refresh_token = self
+            .jwt_repo
+            .generate_refresh_token(user.id, 7) // 7 days
+            .await
+            .map_err(|e| anyhow!("Failed to create refresh token: {}", e))?;
+
+        // สร้าง user info สำหรับ response
+        let user_info = UserInfo {
+            id: user.id,
+            email: user.email.as_str().to_string(),
+            fname: user.first_name.clone(),
+            lname: user.last_name.clone(),
+            roles,
+            permissions,
+        };
+
+        Ok((LoginResponse { user: user_info }, access_token, refresh_token))
+    }
+
+    /// Refresh token flow - ใช้ RT สร้าง AT ใหม่และคืน user info
+    pub async fn refresh_token(&self, refresh_token: &str) -> Result<(RefreshResponse, String)> {
+        // ตรวจสอบ RT โดยใช้ refresh secret
+        let user_id = crate::infrastructure::validate_refresh_token(refresh_token, &self.jwt_repo.get_refresh_secret()).map_err(|e| {
+            anyhow!("Invalid or expired refresh token: {}", e)
+        })?;
+
+        // ค้นหาข้อมูล user
+        let user = self.user_repo.find_by_id(user_id).await.map_err(|e| {
+            anyhow!("Database error while fetching user: {}", e)
+        })?.ok_or_else(|| anyhow!("User not found"))?;
+
+        // ดึง roles และ permissions (mock data สำหรับตอนนี้)
+        let roles = vec!["USER".to_string()];
+        let permissions = vec!["READ_BOOKS".to_string(), "CREATE_ORDERS".to_string()];
+
+        // สร้าง Access Token ใหม่
+        let new_access_token = self
+            .jwt_repo
+            .generate_access_token(user.id, &roles, &permissions)
+            .await
+            .map_err(|e| anyhow!("Failed to create new access token: {}", e))?;
+
+        // สร้าง user info สำหรับ response
+        let user_info = UserInfo {
+            id: user.id,
+            email: user.email.as_str().to_string(),
+            fname: user.first_name.clone(),
+            lname: user.last_name.clone(),
+            roles,
+            permissions,
+        };
+
+        Ok((RefreshResponse { user: user_info }, new_access_token))
+    }
+
+    /// Validate access token และคืน user info
+    pub async fn validate_token(&self, token: &str) -> Result<UserInfo> {
+        // ตรวจสอบ AT
+        let user_id = self.jwt_repo.validate_token(token).await.map_err(|e| {
+            anyhow!("Invalid or expired access token: {}", e)
+        })?;
+
+        // ค้นหาข้อมูล user
+        let user = self.user_repo.find_by_id(user_id).await.map_err(|e| {
+            anyhow!("Database error while fetching user: {}", e)
+        })?.ok_or_else(|| anyhow!("User not found"))?;
+
+        // ดึง roles และ permissions (mock data สำหรับตอนนี้)
+        let roles = vec!["USER".to_string()];
+        let permissions = vec!["READ_BOOKS".to_string(), "CREATE_ORDERS".to_string()];
+
+        // สร้าง user info สำหรับ response
+        let user_info = UserInfo {
+            id: user.id,
+            email: user.email.as_str().to_string(),
+            fname: user.first_name.clone(),
+            lname: user.last_name.clone(),
+            roles,
+            permissions,
+        };
+
+        Ok(user_info)
+    }
+}

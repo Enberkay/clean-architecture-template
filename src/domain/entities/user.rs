@@ -1,7 +1,5 @@
-use crate::domain::{
-    domain_errors::{DomainError, DomainResult},
-    value_objects::email_address::EmailAddress,
-};
+use anyhow::{Result, anyhow};
+use crate::domain::value_objects::email_address::EmailAddress;
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -31,7 +29,7 @@ impl UserEntity {
         phone: String,
         password: String,
         branch_id: Option<i32>,
-    ) -> DomainResult<Self> {
+    ) -> Result<Self> {
         Self::validate_name(&first_name)?;
         Self::validate_name(&last_name)?;
         Self::validate_age(age)?;
@@ -75,7 +73,7 @@ impl UserEntity {
     }
 
     /// Updates the user's email (revalidates)
-    pub fn update_email(&mut self, new_email: String) -> DomainResult<()> {
+    pub fn update_email(&mut self, new_email: String) -> Result<()> {
         let new = EmailAddress::new(&new_email)?;
         self.email = new;
         self.updated_at = Utc::now();
@@ -83,7 +81,7 @@ impl UserEntity {
     }
 
     /// Changes the user's password (hashed)
-    pub fn change_password(&mut self, hashed_password: String) -> DomainResult<()> {
+    pub fn change_password(&mut self, hashed_password: String) -> Result<()> {
         Self::validate_password(&hashed_password)?;
         self.password = hashed_password;
         self.updated_at = Utc::now();
@@ -91,7 +89,7 @@ impl UserEntity {
     }
 
     /// Update user phone
-    pub fn update_phone(&mut self, new_phone: String) -> DomainResult<()> {
+    pub fn update_phone(&mut self, new_phone: String) -> Result<()> {
         Self::validate_phone(&new_phone)?;
         self.phone = new_phone;
         self.updated_at = Utc::now();
@@ -99,7 +97,7 @@ impl UserEntity {
     }
 
     /// Validate the entire entity
-    pub fn validate(&self) -> DomainResult<()> {
+    pub fn validate(&self) -> Result<()> {
         Self::validate_name(&self.first_name)?;
         Self::validate_name(&self.last_name)?;
         Self::validate_age(self.age)?;
@@ -111,38 +109,38 @@ impl UserEntity {
     // Internal validation helpers
     // ----------------------------
 
-    fn validate_name(name: &str) -> DomainResult<()> {
+    fn validate_name(name: &str) -> Result<()> {
         let trimmed = name.trim();
         if trimmed.is_empty() {
-            return Err(DomainError::validation("Name cannot be empty"));
+            return Err(anyhow!("Name cannot be empty"));
         }
         if trimmed.len() > 100 {
-            return Err(DomainError::validation("Name too long (max 100 chars)"));
+            return Err(anyhow!("Name too long (max 100 chars)"));
         }
         Ok(())
     }
 
-    fn validate_age(age: i32) -> DomainResult<()> {
+    fn validate_age(age: i32) -> Result<()> {
         if !(1..=120).contains(&age) {
-            return Err(DomainError::validation("Age must be between 1 and 120"));
+            return Err(anyhow!("Age must be between 1 and 120"));
         }
         Ok(())
     }
 
-    fn validate_phone(phone: &str) -> DomainResult<()> {
+    fn validate_phone(phone: &str) -> Result<()> {
         let trimmed = phone.trim();
         if trimmed.len() < 6 || trimmed.len() > 20 {
-            return Err(DomainError::validation("Phone number length invalid"));
+            return Err(anyhow!("Phone number length invalid"));
         }
         if !trimmed.chars().all(|c| c.is_ascii_digit() || c == '+' || c == '-') {
-            return Err(DomainError::validation("Phone number must contain only digits, '+', or '-'"));
+            return Err(anyhow!("Phone number must contain only digits, '+', or '-'"));
         }
         Ok(())
     }
 
-    fn validate_password(password: &str) -> DomainResult<()> {
+    fn validate_password(password: &str) -> Result<()> {
         if password.trim().len() < 8 {
-            return Err(DomainError::validation("Password must be at least 8 characters long"));
+            return Err(anyhow!("Password must be at least 8 characters long"));
         }
         Ok(())
     }

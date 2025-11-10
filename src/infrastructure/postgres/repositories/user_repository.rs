@@ -1,6 +1,7 @@
+use anyhow::Result;
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::{PgPool, Row};
-use anyhow::Result;
 
 use crate::domain::{
     entities::{user::UserEntity, role::RoleEntity},
@@ -20,7 +21,7 @@ impl PostgresUserRepository {
 
 #[async_trait]
 impl UserRepository for PostgresUserRepository {
-    async fn find_by_id(&self, id: i32) -> Result<Option<UserEntity>> {
+    async fnOption<UserEntity>> {
         let result = sqlx::query_as::<_, UserModel>(
             r#"
             SELECT id, fname, lname, email, age, sex, phone, password,
@@ -36,7 +37,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(result.map(UserEntity::from))
     }
 
-    async fn find_by_email(&self, email: &str) -> Result<Option<UserEntity>> {
+    async fnOption<UserEntity>> {
         let result = sqlx::query_as::<_, UserModel>(
             r#"
             SELECT id, fname, lname, email, age, sex, phone, password,
@@ -52,7 +53,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(result.map(UserEntity::from))
     }
 
-    async fn find_all(&self) -> Result<Vec<UserEntity>> {
+    async fnVec<UserEntity>> {
         let results = sqlx::query_as::<_, UserModel>(
             r#"
             SELECT id, fname, lname, email, age, sex, phone, password,
@@ -67,7 +68,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(results.into_iter().map(UserEntity::from).collect())
     }
 
-    async fn save(&self, user: &UserEntity) -> Result<i32> {
+    async fni32> {
         let row = sqlx::query(
             r#"
             INSERT INTO users
@@ -141,14 +142,14 @@ impl UserRepository for PostgresUserRepository {
         Ok(UserEntity::from(result))
     }
 
-    async fn delete(&self, id: i32) -> Result<()> {
+    async fn()> {
         sqlx::query!("DELETE FROM users WHERE id = $1", id)
             .execute(&self.pool)
             .await?;
         Ok(())
     }
 
-    async fn assign_roles(&self, user_id: i32, role_ids: &[i32]) -> Result<()> {
+    async fn()> {
         for &role_id in role_ids {
             sqlx::query!(
                 r#"
@@ -165,7 +166,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(())
     }
 
-    async fn remove_roles(&self, user_id: i32, role_ids: &[i32]) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             "DELETE FROM user_roles WHERE user_id = $1 AND role_id = ANY($2)",
             user_id,
@@ -176,7 +177,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(())
     }
 
-    async fn find_roles(&self, user_id: i32) -> Result<Vec<RoleEntity>> {
+    async fnVec<RoleEntity>> {
         let results = sqlx::query_as::<_, RoleModel>(
             r#"
             SELECT r.id, r.name, r.description, r.created_at, r.updated_at

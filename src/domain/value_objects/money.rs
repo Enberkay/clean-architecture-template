@@ -1,4 +1,4 @@
-use crate::domain::domain_errors::{DomainError, DomainResult};
+use anyhow::{Result, anyhow};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::*;
 use std::ops::Mul;
@@ -8,9 +8,9 @@ pub struct Money(Decimal);
 
 impl Money {
     /// Create a new Money value. Must be >= 0
-    pub fn new(value: Decimal) -> DomainResult<Self> {
+    pub fn new(value: Decimal) -> Result<Self> {
         if value.is_sign_negative() {
-            return Err(DomainError::validation("Money cannot be negative"));
+            return Err(anyhow!("Money cannot be negative"));
         }
         Ok(Self(value.round_dp(2)))
     }
@@ -26,7 +26,7 @@ impl Money {
     }
 
     /// Convert from Decimal (used in models)
-    pub fn from_decimal(value: Decimal) -> DomainResult<Self> {
+    pub fn from_decimal(value: Decimal) -> Result<Self> {
         Self::new(value)
     }
 
@@ -41,10 +41,10 @@ impl Money {
     }
 
     /// Subtract other Money (error if result < 0)
-    pub fn subtract(self, other: Money) -> DomainResult<Money> {
+    pub fn subtract(self, other: Money) -> Result<Money> {
         let result = self.0 - other.0;
         if result.is_sign_negative() {
-            return Err(DomainError::validation("Resulting money cannot be negative"));
+            return Err(anyhow!("Resulting money cannot be negative"));
         }
         Ok(Money(result.round_dp(2)))
     }
@@ -55,9 +55,9 @@ impl Money {
     }
 
     /// Convert from f64 to Money (for tests)
-    pub fn from_f64(value: f64) -> DomainResult<Self> {
+    pub fn from_f64(value: f64) -> Result<Self> {
         Decimal::try_from(value)
-            .map_err(|_| DomainError::validation("Invalid float for Decimal"))
+            .map_err(|_| anyhow!("Invalid float for Decimal"))
             .and_then(Money::new)
     }
 

@@ -34,13 +34,6 @@ pub fn load() -> Result<AppConfig> {
         url: required_env("DATABASE_URL")?,
     };
 
-    // Redis
-    let redis = Redis {
-        url: required_env("REDIS_URL")?,
-        max_connections: parse_env("REDIS_MAX_CONNECTIONS")?,
-        refresh_token_expiry_days: parse_env("REDIS_REFRESH_TOKEN_EXPIRY_DAYS")?,
-    };
-
     // JWT
     let jwt = JwtConfig {
         access_token_expiry_minutes: parse_env("JWT_ACCESS_TOKEN_EXPIRY_MINUTES")?,
@@ -66,7 +59,6 @@ pub fn load() -> Result<AppConfig> {
     let config = AppConfig {
         server,
         database,
-        redis,
         jwt,
         environment,
         security,

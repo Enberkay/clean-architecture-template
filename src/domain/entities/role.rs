@@ -1,4 +1,4 @@
-use crate::domain::domain_errors::{DomainError, DomainResult};
+use anyhow::{Result, anyhow};
 use crate::domain::entities::permission::PermissionEntity;
 use chrono::{DateTime, Utc};
 
@@ -14,7 +14,7 @@ pub struct RoleEntity {
 
 impl RoleEntity {
     /// Create a new role with validation
-    pub fn new(name: String, description: Option<String>) -> DomainResult<Self> {
+    pub fn new(name: String, description: Option<String>) -> Result<Self> {
         Self::validate_name(&name)?;
         let now = Utc::now();
 
@@ -29,7 +29,7 @@ impl RoleEntity {
     }
 
     /// Rename this role
-    pub fn rename(&mut self, new_name: String) -> DomainResult<()> {
+    pub fn rename(&mut self, new_name: String) -> Result<()> {
         Self::validate_name(&new_name)?;
         self.name = new_name.trim().to_uppercase();
         self.updated_at = Utc::now();
@@ -43,7 +43,7 @@ impl RoleEntity {
     }
 
     /// Assign permissions to role
-    pub fn set_permissions(&mut self, permissions: Vec<PermissionEntity>) -> DomainResult<()> {
+    pub fn set_permissions(&mut self, permissions: Vec<PermissionEntity>) -> Result<()> {
         self.permissions = permissions;
         self.updated_at = Utc::now();
         Ok(())
@@ -55,18 +55,18 @@ impl RoleEntity {
     }
 
     /// Validation for name
-    fn validate_name(name: &str) -> DomainResult<()> {
+    fn validate_name(name: &str) -> Result<()> {
         let trimmed = name.trim();
         if trimmed.is_empty() {
-            return Err(DomainError::validation("Role name cannot be empty"));
+            return Err(anyhow!("Role name cannot be empty"));
         }
         if trimmed.len() > 100 {
-            return Err(DomainError::validation("Role name too long (max 100 chars)"));
+            return Err(anyhow!("Role name too long (max 100 chars)"));
         }
         Ok(())
     }
 
-    pub fn validate(&self) -> DomainResult<()> {
+    pub fn validate(&self) -> Result<()> {
         Self::validate_name(&self.name)
     }
 

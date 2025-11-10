@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::{PgPool, Postgres, Transaction};
-use anyhow::Result;
 
 use crate::domain::{
     entities::order::{OrderEntity, OrderItemEntity},
@@ -50,7 +50,7 @@ impl PostgresOrderRepository {
 
 #[async_trait]
 impl OrderRepository for PostgresOrderRepository {
-    async fn find_by_id(&self, id: i32) -> Result<Option<OrderEntity>> {
+    async fnOption<OrderEntity>> {
         let result = sqlx::query_as::<_, OrderModel>(
             r#"
             SELECT id, user_id, order_date, status, source, total_amount,
@@ -66,7 +66,7 @@ impl OrderRepository for PostgresOrderRepository {
         Ok(result.map(OrderEntity::from))
     }
 
-    async fn find_items(&self, order_id: i32) -> Result<Vec<OrderItemEntity>> {
+    async fnVec<OrderItemEntity>> {
         let results = sqlx::query_as::<_, OrderItemModel>(
             r#"
             SELECT id, order_id, book_isbn, book_title, book_author,
@@ -83,7 +83,7 @@ impl OrderRepository for PostgresOrderRepository {
         Ok(results.into_iter().map(OrderItemEntity::from).collect())
     }
 
-    async fn save(&self, order: &OrderEntity) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             INSERT INTO orders
@@ -116,14 +116,14 @@ impl OrderRepository for PostgresOrderRepository {
         Ok(())
     }
 
-    async fn save_items(&self, items: &[OrderItemEntity]) -> Result<()> {
+    async fn()> {
         let mut tx = self.pool.begin().await?;
         Self::insert_items_tx(&mut tx, items).await?;
         tx.commit().await?;
         Ok(())
     }
 
-    async fn delete(&self, id: i32) -> Result<()> {
+    async fn()> {
         let mut tx = self.pool.begin().await?;
 
         // Delete items first (FK constraint)
@@ -139,7 +139,7 @@ impl OrderRepository for PostgresOrderRepository {
         Ok(())
     }
 
-    async fn save_with_items(&self, order: &OrderEntity, items: &[OrderItemEntity]) -> Result<()> {
+    async fn()> {
         let mut tx = self.pool.begin().await?;
 
         // Save order

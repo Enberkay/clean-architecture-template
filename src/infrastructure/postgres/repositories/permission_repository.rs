@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::permission::PermissionEntity,
@@ -20,7 +20,7 @@ impl PostgresPermissionRepository {
 
 #[async_trait]
 impl PermissionRepository for PostgresPermissionRepository {
-    async fn find_all(&self) -> Result<Vec<PermissionEntity>> {
+    async fnVec<PermissionEntity>> {
         let results = sqlx::query_as::<_, PermissionModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
@@ -34,7 +34,7 @@ impl PermissionRepository for PostgresPermissionRepository {
         Ok(results.into_iter().map(PermissionEntity::from).collect())
     }
 
-    async fn find_by_id(&self, id: i32) -> Result<Option<PermissionEntity>> {
+    async fnOption<PermissionEntity>> {
         let result = sqlx::query_as::<_, PermissionModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
@@ -49,7 +49,7 @@ impl PermissionRepository for PostgresPermissionRepository {
         Ok(result.map(PermissionEntity::from))
     }
 
-    async fn find_by_ids(&self, ids: &[i32]) -> Result<Vec<PermissionEntity>> {
+    async fnVec<PermissionEntity>> {
         let results = sqlx::query_as::<_, PermissionModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
@@ -65,7 +65,7 @@ impl PermissionRepository for PostgresPermissionRepository {
         Ok(results.into_iter().map(PermissionEntity::from).collect())
     }
 
-    async fn save(&self, permission: &PermissionEntity) -> Result<i32> {
+    async fni32> {
         let result = sqlx::query!(
             r#"
             INSERT INTO permissions (name, description, created_at, updated_at)
@@ -83,7 +83,7 @@ impl PermissionRepository for PostgresPermissionRepository {
         Ok(result.id)
     }
 
-    async fn update(&self, id: i32, name: Option<String>, description: Option<String>) -> Result<PermissionEntity> {
+    async fnPermissionEntity> {
         let result = sqlx::query_as!(
             PermissionModel,
             r#"
@@ -105,7 +105,7 @@ impl PermissionRepository for PostgresPermissionRepository {
         Ok(PermissionEntity::from(result))
     }
 
-    async fn delete(&self, id: i32) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             DELETE FROM permissions

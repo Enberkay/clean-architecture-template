@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::receipt::ReceiptEntity,
@@ -21,7 +21,7 @@ impl PostgresReceiptRepository {
 
 #[async_trait]
 impl ReceiptRepository for PostgresReceiptRepository {
-    async fn find_by_code(&self, code: &ReceiptCode) -> Result<Option<ReceiptEntity>> {
+    async fnOption<ReceiptEntity>> {
         let result = sqlx::query_as::<_, ReceiptModel>(
             r#"
             SELECT id, receipt_code, type_name, reference_id, source,
@@ -38,7 +38,7 @@ impl ReceiptRepository for PostgresReceiptRepository {
         Ok(result.map(ReceiptEntity::from))
     }
 
-    async fn find_by_reference(&self, reference_id: i32) -> Result<Vec<ReceiptEntity>> {
+    async fnVec<ReceiptEntity>> {
         let results = sqlx::query_as::<_, ReceiptModel>(
             r#"
             SELECT id, receipt_code, type_name, reference_id, source,
@@ -56,7 +56,7 @@ impl ReceiptRepository for PostgresReceiptRepository {
         Ok(results.into_iter().map(ReceiptEntity::from).collect())
     }
 
-    async fn save(&self, receipt: &ReceiptEntity) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             INSERT INTO receipts

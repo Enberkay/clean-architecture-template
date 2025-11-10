@@ -1,5 +1,5 @@
 pub mod postgres;
-pub mod axum_http;
-pub mod jwt_authentication;
-pub mod argon2_hashing;
-pub mod redis;
+pub mod security;
+
+// Re-export JWT types for easier access
+pub use security::jwt::*;

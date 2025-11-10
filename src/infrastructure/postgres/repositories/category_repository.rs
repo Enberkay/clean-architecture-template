@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::category::CategoryEntity,
@@ -20,7 +20,7 @@ impl PostgresCategoryRepository {
 
 #[async_trait]
 impl CategoryRepository for PostgresCategoryRepository {
-    async fn find_by_id(&self, id: i32) -> Result<Option<CategoryEntity>> {
+    async fnOption<CategoryEntity>> {
         let result = sqlx::query_as::<_, CategoryModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
@@ -35,7 +35,7 @@ impl CategoryRepository for PostgresCategoryRepository {
         Ok(result.map(CategoryEntity::from))
     }
 
-    async fn find_all(&self) -> Result<Vec<CategoryEntity>> {
+    async fnVec<CategoryEntity>> {
         let results = sqlx::query_as::<_, CategoryModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
@@ -49,7 +49,7 @@ impl CategoryRepository for PostgresCategoryRepository {
         Ok(results.into_iter().map(CategoryEntity::from).collect())
     }
 
-    async fn save(&self, category: &CategoryEntity) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             INSERT INTO categories (id, name, description, created_at, updated_at)
@@ -72,7 +72,7 @@ impl CategoryRepository for PostgresCategoryRepository {
         Ok(())
     }
 
-    async fn delete(&self, id: i32) -> Result<()> {
+    async fn()> {
         sqlx::query!("DELETE FROM categories WHERE id = $1", id)
             .execute(&self.pool)
             .await?;

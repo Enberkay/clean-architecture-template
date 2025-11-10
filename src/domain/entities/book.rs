@@ -1,7 +1,5 @@
-use crate::domain::{
-    domain_errors::{DomainError, DomainResult},
-    value_objects::{isbn13::Isbn13, money::Money},
-};
+use anyhow::{Result, anyhow};
+use crate::domain::value_objects::{isbn13::Isbn13, money::Money};
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 
@@ -25,13 +23,13 @@ impl BookEntity {
         author: Option<String>,
         synopsis: Option<String>,
         price: Money,
-    ) -> DomainResult<Self> {
+    ) -> Result<Self> {
         if title.trim().is_empty() {
-            return Err(DomainError::validation("Book title cannot be empty"));
+            return Err(anyhow!("Book title cannot be empty"));
         }
 
         if price.value() <= Decimal::ZERO {
-            return Err(DomainError::validation("Book price must be greater than zero"));
+            return Err(anyhow!("Book price must be greater than zero"));
         }
 
         let now = Utc::now();
@@ -58,9 +56,9 @@ impl BookEntity {
     }
 
     /// Update book price with validation.
-    pub fn update_price(&mut self, new_price: Money) -> DomainResult<()> {
+    pub fn update_price(&mut self, new_price: Money) -> Result<()> {
         if new_price.value() <= Decimal::ZERO {
-            return Err(DomainError::validation("Book price must be greater than zero"));
+            return Err(anyhow!("Book price must be greater than zero"));
         }
         self.price = new_price;
         self.updated_at = Utc::now();
@@ -73,9 +71,9 @@ impl BookEntity {
         title: String,
         author: Option<String>,
         synopsis: Option<String>,
-    ) -> DomainResult<()> {
+    ) -> Result<()> {
         if title.trim().is_empty() {
-            return Err(DomainError::validation("Book title cannot be empty"));
+            return Err(anyhow!("Book title cannot be empty"));
         }
 
         self.title = title;

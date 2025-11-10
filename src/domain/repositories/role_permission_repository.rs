@@ -1,8 +1,4 @@
 use async_trait::async_trait;
-use anyhow::Result;
-
-/// Repository interface for managing the mapping table between roles and permissions.
-/// Table: `role_permissions`
 #[async_trait]
 pub trait RolePermissionRepository: Send + Sync {
     /// Assign multiple permissions to a role.

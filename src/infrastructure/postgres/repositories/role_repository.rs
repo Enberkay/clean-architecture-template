@@ -1,6 +1,6 @@
+use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::PgPool;
-use anyhow::Result;
 
 use crate::domain::{
     entities::role::RoleEntity,
@@ -24,7 +24,7 @@ impl PostgresRoleRepository {
 
 #[async_trait]
 impl RoleRepository for PostgresRoleRepository {
-    async fn find_all(&self) -> Result<Vec<RoleEntity>> {
+    async fnVec<RoleEntity>> {
         // Get all roles first
         let roles = sqlx::query_as::<_, RoleModel>(
             r#"
@@ -71,7 +71,7 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(roles_with_permissions)
     }
 
-    async fn find_by_id(&self, id: i32) -> Result<Option<RoleEntity>> {
+    async fnOption<RoleEntity>> {
         // Get role
         let role = sqlx::query_as::<_, RoleModel>(
             r#"
@@ -109,7 +109,7 @@ impl RoleRepository for PostgresRoleRepository {
         }
     }
 
-    async fn find_by_ids(&self, ids: &[i32]) -> Result<Vec<RoleEntity>> {
+    async fnVec<RoleEntity>> {
         let results = sqlx::query_as::<_, RoleModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
@@ -125,7 +125,7 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(results.into_iter().map(RoleEntity::from).collect())
     }
 
-    async fn save(&self, role: &RoleEntity) -> Result<i32> {
+    async fni32> {
         let result = sqlx::query!(
             r#"
             INSERT INTO roles (name, description, created_at, updated_at)
@@ -143,7 +143,7 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(result.id)
     }
 
-    async fn update(&self, id: i32, name: Option<String>, description: Option<String>) -> Result<RoleEntity> {
+    async fnRoleEntity> {
         let result = sqlx::query_as!(
             RoleModel,
             r#"
@@ -165,7 +165,7 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(RoleEntity::from(result))
     }
 
-    async fn delete(&self, id: i32) -> Result<()> {
+    async fn()> {
         sqlx::query!(
             r#"
             DELETE FROM roles

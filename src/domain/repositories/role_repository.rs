@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use anyhow::Result;
 use crate::domain::entities::role::RoleEntity;
 
 #[async_trait]

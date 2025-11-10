@@ -1,5 +1,5 @@
+use anyhow::{Result, anyhow};
 use crate::domain::{
-    domain_errors::{DomainError, DomainResult},
     value_objects::{money::Money, receipt_code::ReceiptCode},
 };
 use chrono::{DateTime, Utc};
@@ -34,11 +34,11 @@ impl ReceiptEntity {
         user_id: Option<i32>,
         branch_id: Option<i32>,
         payment_method: Option<String>,
-    ) -> DomainResult<Self> {
+    ) -> Result<Self> {
         Self::validate_type(&type_name)?;
         Self::validate_source(&source)?;
         if total_amount.value() <= Decimal::ZERO {
-            return Err(DomainError::validation("Total amount must be greater than zero"));
+            return Err(anyhow!("Total amount must be greater than zero"));
         }
 
         let now = Utc::now();
@@ -61,9 +61,9 @@ impl ReceiptEntity {
     }
 
     /// Mark receipt as cancelled
-    pub fn mark_cancelled(&mut self) -> DomainResult<()> {
+    pub fn mark_cancelled(&mut self) -> Result<()> {
         if self.status == "CANCELLED" {
-            return Err(DomainError::validation("Receipt is already cancelled"));
+            return Err(anyhow!("Receipt is already cancelled"));
         }
         self.status = "CANCELLED".into();
         self.updated_at = Utc::now();
@@ -71,9 +71,9 @@ impl ReceiptEntity {
     }
 
     /// Mark receipt as paid (e.g. after successful transaction)
-    pub fn mark_paid(&mut self) -> DomainResult<()> {
+    pub fn mark_paid(&mut self) -> Result<()> {
         if self.status == "PAID" {
-            return Err(DomainError::validation("Receipt is already marked as paid"));
+            return Err(anyhow!("Receipt is already marked as paid"));
         }
         self.status = "PAID".into();
         self.updated_at = Utc::now();
@@ -102,10 +102,10 @@ impl ReceiptEntity {
     // Validation helpers (business constraints)
     // -----------------------------------------
 
-    fn validate_type(type_name: &str) -> DomainResult<()> {
+    fn validate_type(type_name: &str) -> Result<()> {
         let valid_types = ["SALE", "ORDER"];
         if !valid_types.contains(&type_name.to_uppercase().as_str()) {
-            return Err(DomainError::validation(format!(
+            return Err(anyhow!(format!(
                 "Invalid receipt type: {}",
                 type_name
             )));
@@ -113,10 +113,10 @@ impl ReceiptEntity {
         Ok(())
     }
 
-    fn validate_source(source: &str) -> DomainResult<()> {
+    fn validate_source(source: &str) -> Result<()> {
         let valid_sources = ["POS", "ONLINE"];
         if !valid_sources.contains(&source.to_uppercase().as_str()) {
-            return Err(DomainError::validation(format!(
+            return Err(anyhow!(format!(
                 "Invalid receipt source: {}",
                 source
             )));
@@ -125,11 +125,11 @@ impl ReceiptEntity {
     }
 
     /// Validate integrity of current entity
-    pub fn validate(&self) -> DomainResult<()> {
+    pub fn validate(&self) -> Result<()> {
         Self::validate_type(&self.type_name)?;
         Self::validate_source(&self.source)?;
         if self.total_amount.value() <= Decimal::ZERO {
-            return Err(DomainError::validation("Total amount must be greater than zero"));
+            return Err(anyhow!("Total amount must be greater than zero"));
         }
         Ok(())
     }

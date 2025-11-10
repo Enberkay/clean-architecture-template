@@ -1,5 +1,5 @@
+use anyhow::{Result, anyhow};
 use crate::domain::{
-    domain_errors::{DomainError, DomainResult},
     value_objects::{isbn13::Isbn13, stock_quantity::StockQuantity},
 };
 use chrono::{DateTime, Utc};
@@ -14,9 +14,9 @@ pub struct InventoryEntity {
 
 impl InventoryEntity {
     /// Create new inventory record
-    pub fn new(branch_id: i32, book_isbn: Isbn13, quantity: i32) -> DomainResult<Self> {
+    pub fn new(branch_id: i32, book_isbn: Isbn13, quantity: i32) -> Result<Self> {
         if branch_id <= 0 {
-            return Err(DomainError::validation("Branch ID must be positive"));
+            return Err(anyhow!("Branch ID must be positive"));
         }
 
         let qty = StockQuantity::new(quantity)?;
@@ -29,9 +29,9 @@ impl InventoryEntity {
     }
 
     /// Increase stock by given quantity
-    pub fn increase(&mut self, qty: u32) -> DomainResult<()> {
+    pub fn increase(&mut self, qty: u32) -> Result<()> {
         if qty == 0 {
-            return Err(DomainError::validation("Increase amount must be greater than zero"));
+            return Err(anyhow!("Increase amount must be greater than zero"));
         }
         self.quantity.increase(qty);
         self.updated_at = Utc::now();
@@ -39,9 +39,9 @@ impl InventoryEntity {
     }
 
     /// Decrease stock by given quantity
-    pub fn decrease(&mut self, qty: u32) -> DomainResult<()> {
+    pub fn decrease(&mut self, qty: u32) -> Result<()> {
         if qty == 0 {
-            return Err(DomainError::validation("Decrease amount must be greater than zero"));
+            return Err(anyhow!("Decrease amount must be greater than zero"));
         }
         self.quantity.decrease(qty)?;
         self.updated_at = Utc::now();
@@ -49,7 +49,7 @@ impl InventoryEntity {
     }
 
     /// Replace stock quantity directly (used by sync jobs)
-    pub fn set_quantity(&mut self, qty: i32) -> DomainResult<()> {
+    pub fn set_quantity(&mut self, qty: i32) -> Result<()> {
         self.quantity = StockQuantity::new(qty)?;
         self.updated_at = Utc::now();
         Ok(())

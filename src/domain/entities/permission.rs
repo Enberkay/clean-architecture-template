@@ -1,4 +1,4 @@
-use crate::domain::domain_errors::{DomainError, DomainResult};
+use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -12,7 +12,7 @@ pub struct PermissionEntity {
 
 impl PermissionEntity {
     /// Create a new permission entity with validation
-    pub fn new(name: String, description: Option<String>) -> DomainResult<Self> {
+    pub fn new(name: String, description: Option<String>) -> Result<Self> {
         Self::validate_name(&name)?;
         Ok(Self {
             id: 0,
@@ -24,7 +24,7 @@ impl PermissionEntity {
     }
 
     /// Rename permission (must not be empty or too long)
-    pub fn rename(&mut self, new_name: String) -> DomainResult<()> {
+    pub fn rename(&mut self, new_name: String) -> Result<()> {
         Self::validate_name(&new_name)?;
         self.name = new_name.trim().to_string();
         Ok(())
@@ -36,19 +36,19 @@ impl PermissionEntity {
     }
 
     /// Validate the entity fields (for service layer)
-    pub fn validate(&self) -> DomainResult<()> {
+    pub fn validate(&self) -> Result<()> {
         Self::validate_name(&self.name)?;
         Ok(())
     }
 
     /// Validate permission name (business rule)
-    fn validate_name(name: &str) -> DomainResult<()> {
+    fn validate_name(name: &str) -> Result<()> {
         let trimmed = name.trim();
         if trimmed.is_empty() {
-            return Err(DomainError::validation("Permission name cannot be empty"));
+            return Err(anyhow!("Permission name cannot be empty"));
         }
         if trimmed.len() > 100 {
-            return Err(DomainError::validation("Permission name too long (max 100 chars)"));
+            return Err(anyhow!("Permission name too long (max 100 chars)"));
         }
         Ok(())
     }

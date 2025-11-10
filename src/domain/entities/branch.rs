@@ -1,4 +1,4 @@
-use crate::domain::domain_errors::{DomainError, DomainResult};
+use anyhow::{Result, anyhow};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -13,7 +13,7 @@ pub struct BranchEntity {
 
 impl BranchEntity {
     /// Create a new branch with validation.
-    pub fn new(name: String, address: Option<String>, phone: Option<String>) -> DomainResult<Self> {
+    pub fn new(name: String, address: Option<String>, phone: Option<String>) -> Result<Self> {
         Self::validate_name(&name)?;
         if let Some(p) = &phone {
             Self::validate_phone(p)?;
@@ -36,7 +36,7 @@ impl BranchEntity {
         name: String,
         address: Option<String>,
         phone: Option<String>,
-    ) -> DomainResult<()> {
+    ) -> Result<()> {
         Self::validate_name(&name)?;
         if let Some(p) = &phone {
             Self::validate_phone(p)?;
@@ -63,19 +63,19 @@ impl BranchEntity {
     // Internal validators
     // ==========================
 
-    fn validate_name(name: &str) -> DomainResult<()> {
+    fn validate_name(name: &str) -> Result<()> {
         if name.trim().is_empty() {
-            return Err(DomainError::validation("Branch name cannot be empty"));
+            return Err(anyhow!("Branch name cannot be empty"));
         }
         Ok(())
     }
 
-    fn validate_phone(phone: &str) -> DomainResult<()> {
+    fn validate_phone(phone: &str) -> Result<()> {
         if !phone.chars().all(|c| c.is_ascii_digit() || c == '+' || c == '-' || c == ' ') {
-            return Err(DomainError::validation("Phone number contains invalid characters"));
+            return Err(anyhow!("Phone number contains invalid characters"));
         }
         if phone.trim().len() < 6 {
-            return Err(DomainError::validation("Phone number is too short"));
+            return Err(anyhow!("Phone number is too short"));
         }
         Ok(())
     }

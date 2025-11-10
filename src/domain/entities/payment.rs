@@ -1,5 +1,5 @@
+use anyhow::{Result, anyhow};
 use crate::domain::{
-    domain_errors::{DomainError, DomainResult},
     value_objects::money::Money,
 };
 use chrono::{DateTime, Utc};
@@ -25,10 +25,10 @@ impl PaymentEntity {
         sale_id: Option<i32>,
         payment_method: String,
         amount: Money,
-    ) -> DomainResult<Self> {
+    ) -> Result<Self> {
         Self::validate_method(&payment_method)?;
         if amount.value() <= Decimal::ZERO {
-            return Err(DomainError::validation("Payment amount must be greater than zero"));
+            return Err(anyhow!("Payment amount must be greater than zero"));
         }
 
         let now = Utc::now();
@@ -46,9 +46,9 @@ impl PaymentEntity {
     }
 
     /// Mark this payment as successfully completed
-    pub fn mark_paid(&mut self, transaction_ref: Option<String>) -> DomainResult<()> {
+    pub fn mark_paid(&mut self, transaction_ref: Option<String>) -> Result<()> {
         if self.status != "PENDING" {
-            return Err(DomainError::validation("Only pending payments can be marked as paid"));
+            return Err(anyhow!("Only pending payments can be marked as paid"));
         }
 
         self.status = "PAID".into();
@@ -58,9 +58,9 @@ impl PaymentEntity {
     }
 
     /// Mark this payment as failed
-    pub fn mark_failed(&mut self) -> DomainResult<()> {
+    pub fn mark_failed(&mut self) -> Result<()> {
         if self.status == "PAID" {
-            return Err(DomainError::validation("Cannot fail a payment that is already paid"));
+            return Err(anyhow!("Cannot fail a payment that is already paid"));
         }
 
         self.status = "FAILED".into();
@@ -69,9 +69,9 @@ impl PaymentEntity {
     }
 
     /// Mark this payment as refunded
-    pub fn mark_refunded(&mut self) -> DomainResult<()> {
+    pub fn mark_refunded(&mut self) -> Result<()> {
         if self.status != "PAID" {
-            return Err(DomainError::validation("Only paid payments can be refunded"));
+            return Err(anyhow!("Only paid payments can be refunded"));
         }
 
         self.status = "REFUNDED".into();
@@ -80,10 +80,10 @@ impl PaymentEntity {
     }
 
     /// Validate payment data invariants
-    pub fn validate(&self) -> DomainResult<()> {
+    pub fn validate(&self) -> Result<()> {
         Self::validate_method(&self.payment_method)?;
         if self.amount.value() <= Decimal::ZERO {
-            return Err(DomainError::validation("Payment amount must be greater than zero"));
+            return Err(anyhow!("Payment amount must be greater than zero"));
         }
         Ok(())
     }
@@ -117,10 +117,10 @@ impl PaymentEntity {
     // ---------------------------
     // Internal validation helpers
     // ---------------------------
-    fn validate_method(method: &str) -> DomainResult<()> {
+    fn validate_method(method: &str) -> Result<()> {
         let valid_methods = ["CASH", "CREDIT_CARD", "PROMPTPAY", "BANK_TRANSFER"];
         if !valid_methods.contains(&method.to_uppercase().as_str()) {
-            return Err(DomainError::validation(format!(
+            return Err(anyhow!(format!(
                 "Invalid payment method: {}",
                 method
             )));
