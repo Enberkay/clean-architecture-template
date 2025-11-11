@@ -4,7 +4,10 @@ use crate::application::{
 };
 use anyhow::{Result, anyhow};
 use crate::{
-    domain::repositories::user_repository::UserRepository,
+    domain::repositories::{
+        user_repository::UserRepository,
+        role_permission_repository::RolePermissionRepository,
+    },
     infrastructure::{
         security::argon2::PasswordService,
         JwtService,
@@ -16,6 +19,7 @@ pub struct AuthUseCase {
     user_repo: Arc<dyn UserRepository>,
     password_repo: Arc<dyn PasswordService>,
     jwt_repo: Arc<dyn JwtService>,
+    role_permission_repo: Arc<dyn RolePermissionRepository>,
 }
 
 impl AuthUseCase {
@@ -23,12 +27,42 @@ impl AuthUseCase {
         user_repo: Arc<dyn UserRepository>,
         password_repo: Arc<dyn PasswordService>,
         jwt_repo: Arc<dyn JwtService>,
+        role_permission_repo: Arc<dyn RolePermissionRepository>,
     ) -> Self {
         Self {
             user_repo,
             password_repo,
             jwt_repo,
+            role_permission_repo,
         }
+
+    }
+
+    /// Helper method to get user permissions from their roles
+    async fn get_user_permissions(&self, user_id: i32) -> Result<Vec<String>> {
+        // Get user's roles
+        let roles = self.user_repo.find_roles(user_id).await
+            .map_err(|e| anyhow!("Failed to fetch user roles: {}", e))?;
+
+        if roles.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Get all permission IDs for all user roles
+        let mut permission_ids = Vec::new();
+        for role in roles {
+            let role_permissions = self.role_permission_repo.get_permissions_for_role(role.id).await
+                .map_err(|e| anyhow!("Failed to fetch permissions for role {}: {}", role.id, e))?;
+            permission_ids.extend(role_permissions);
+        }
+
+        // Remove duplicates
+        permission_ids.sort();
+        permission_ids.dedup();
+
+        // Convert permission IDs to strings (for now, using IDs as names)
+        // TODO: This could be enhanced to fetch actual permission names
+        Ok(permission_ids.into_iter().map(|id| id.to_string()).collect())
     }
 
     /// สมัครสมาชิกใหม่
@@ -91,18 +125,22 @@ impl AuthUseCase {
             return Err(anyhow!("Invalid credentials"));
         }
 
-        // ดึง roles และ permissions ของ user (mock data สำหรับตอนนี้)
-        let roles = vec!["USER".to_string()];
-        let permissions = vec!["READ_BOOKS".to_string(), "CREATE_ORDERS".to_string()];
+        // Get user's real roles and permissions
+        let roles = self.user_repo.find_roles(user.id).await
+            .map_err(|e| anyhow!("Failed to fetch user roles: {}", e))?;
+        let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
 
-        // สร้าง Access Token (15 นาที)
+        let permissions = self.get_user_permissions(user.id).await
+            .map_err(|e| anyhow!("Failed to fetch user permissions: {}", e))?;
+
+        // สร้าง Access Token
         let access_token = self
             .jwt_repo
-            .generate_access_token(user.id, &roles, &permissions)
+            .generate_access_token(user.id, &role_names, &permissions)
             .await
             .map_err(|e| anyhow!("Failed to create access token: {}", e))?;
 
-        // สร้าง Refresh Token (7 วัน)
+        // สร้าง Refresh Token
         let refresh_token = self
             .jwt_repo
             .generate_refresh_token(user.id) // 7 days hardcoded
@@ -115,7 +153,7 @@ impl AuthUseCase {
             email: user.email.as_str().to_string(),
             fname: user.first_name.clone(),
             lname: user.last_name.clone(),
-            roles,
+            roles: role_names,
             permissions,
         };
 
@@ -134,16 +172,20 @@ impl AuthUseCase {
             anyhow!("Database error while fetching user: {}", e)
         })?.ok_or_else(|| anyhow!("User not found"))?;
 
-        // ดึง roles และ permissions (mock data สำหรับตอนนี้)
-        let roles = vec!["USER".to_string()];
-        let permissions = vec!["READ_BOOKS".to_string(), "CREATE_ORDERS".to_string()];
+        // Get user's real roles and permissions
+        let roles = self.user_repo.find_roles(user.id).await
+            .map_err(|e| anyhow!("Failed to fetch user roles: {}", e))?;
+        let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
+
+        let permissions = self.get_user_permissions(user.id).await
+            .map_err(|e| anyhow!("Failed to fetch user permissions: {}", e))?;
 
         // สร้าง Access Token ใหม่
         let new_access_token = self
             .jwt_repo
-            .generate_access_token(user.id, &roles, &permissions)
+            .generate_access_token(user.id, &role_names, &permissions)
             .await
-            .map_err(|e| anyhow!("Failed to create new access token: {}", e))?;
+            .map_err(|e| anyhow!("Failed to create access token: {}", e))?;
 
         // สร้าง user info สำหรับ response
         let user_info = UserInfo {
@@ -151,7 +193,7 @@ impl AuthUseCase {
             email: user.email.as_str().to_string(),
             fname: user.first_name.clone(),
             lname: user.last_name.clone(),
-            roles,
+            roles: role_names,
             permissions,
         };
 
@@ -170,9 +212,13 @@ impl AuthUseCase {
             anyhow!("Database error while fetching user: {}", e)
         })?.ok_or_else(|| anyhow!("User not found"))?;
 
-        // ดึง roles และ permissions (mock data สำหรับตอนนี้)
-        let roles = vec!["USER".to_string()];
-        let permissions = vec!["READ_BOOKS".to_string(), "CREATE_ORDERS".to_string()];
+        // Get user's real roles and permissions
+        let roles = self.user_repo.find_roles(user.id).await
+            .map_err(|e: anyhow::Error| anyhow!("Failed to fetch user roles: {}", e))?;
+        let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
+
+        let permissions = self.get_user_permissions(user.id).await
+            .map_err(|e| anyhow!("Failed to fetch user permissions: {}", e))?;
 
         // สร้าง user info สำหรับ response
         let user_info = UserInfo {
@@ -180,7 +226,7 @@ impl AuthUseCase {
             email: user.email.as_str().to_string(),
             fname: user.first_name.clone(),
             lname: user.last_name.clone(),
-            roles,
+            roles: role_names,
             permissions,
         };
 

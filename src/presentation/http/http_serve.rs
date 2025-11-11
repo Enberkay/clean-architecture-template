@@ -82,6 +82,7 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
         user_repo.clone(),
         password_repo.clone(),
         jwt_repo.clone(),
+        role_perm_repo.clone(),
     ));
     let user_usecase = Arc::new(UserUseCase::new(user_repo.clone(), role_repo.clone(),password_repo.clone(),));
     let role_usecase = Arc::new(RoleUseCase::new(
