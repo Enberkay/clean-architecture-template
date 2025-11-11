@@ -54,7 +54,6 @@ impl AuthUseCase {
             req.sex,
             req.phone,
             hashed_password,
-            None,
         )
         .map_err(|e| anyhow!("{}", e))?;
 

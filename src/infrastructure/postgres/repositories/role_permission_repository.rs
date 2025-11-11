@@ -17,7 +17,7 @@ impl PostgresRolePermissionRepository {
 
 #[async_trait]
 impl RolePermissionRepository for PostgresRolePermissionRepository {
-    async fn()> {
+    async fn assign_permissions(&self, role_id: i32, permission_ids: &[i32]) -> Result<()> {
         for &perm_id in permission_ids {
             sqlx::query!(
                 r#"
@@ -34,7 +34,7 @@ impl RolePermissionRepository for PostgresRolePermissionRepository {
         Ok(())
     }
 
-    async fn()> {
+    async fn remove_permissions(&self, role_id: i32, permission_ids: &[i32]) -> Result<()> {
         sqlx::query!(
             r#"
             DELETE FROM role_permissions
@@ -49,7 +49,7 @@ impl RolePermissionRepository for PostgresRolePermissionRepository {
         Ok(())
     }
 
-    async fn()> {
+    async fn clear_permissions(&self, role_id: i32) -> Result<()> {
         sqlx::query!(
             r#"
             DELETE FROM role_permissions
@@ -62,7 +62,7 @@ impl RolePermissionRepository for PostgresRolePermissionRepository {
         Ok(())
     }
 
-    async fnVec<i32>> {
+    async fn get_permissions_for_role(&self, role_id: i32) -> Result<Vec<i32>> {
         let results = sqlx::query!(
             r#"
             SELECT permission_id

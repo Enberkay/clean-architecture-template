@@ -24,7 +24,7 @@ impl PostgresRoleRepository {
 
 #[async_trait]
 impl RoleRepository for PostgresRoleRepository {
-    async fnVec<RoleEntity>> {
+    async fn find_all(&self) -> Result<Vec<RoleEntity>> {
         // Get all roles first
         let roles = sqlx::query_as::<_, RoleModel>(
             r#"
@@ -71,9 +71,8 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(roles_with_permissions)
     }
 
-    async fnOption<RoleEntity>> {
-        // Get role
-        let role = sqlx::query_as::<_, RoleModel>(
+    async fn find_by_id(&self, id: i32) -> Result<Option<RoleEntity>> {
+        let result = sqlx::query_as::<_, RoleModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
             FROM roles
@@ -84,7 +83,7 @@ impl RoleRepository for PostgresRoleRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        if let Some(role_model) = role {
+        if let Some(role_model) = result {
             // Get permissions for this role
             let permissions = sqlx::query_as::<_, PermissionModel>(
                 r#"
@@ -109,7 +108,7 @@ impl RoleRepository for PostgresRoleRepository {
         }
     }
 
-    async fnVec<RoleEntity>> {
+    async fn find_by_ids(&self, ids: &[i32]) -> Result<Vec<RoleEntity>> {
         let results = sqlx::query_as::<_, RoleModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
@@ -125,7 +124,7 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(results.into_iter().map(RoleEntity::from).collect())
     }
 
-    async fni32> {
+    async fn save(&self, role: &RoleEntity) -> Result<i32> {
         let result = sqlx::query!(
             r#"
             INSERT INTO roles (name, description, created_at, updated_at)
@@ -143,7 +142,7 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(result.id)
     }
 
-    async fnRoleEntity> {
+    async fn update(&self, id: i32, name: Option<String>, description: Option<String>) -> Result<RoleEntity> {
         let result = sqlx::query_as!(
             RoleModel,
             r#"
@@ -165,7 +164,7 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(RoleEntity::from(result))
     }
 
-    async fn()> {
+    async fn delete(&self, id: i32) -> Result<()> {
         sqlx::query!(
             r#"
             DELETE FROM roles

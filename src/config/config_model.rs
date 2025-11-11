@@ -9,7 +9,7 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> anyhow::Result<()> {
         self.server.validate()?;
         self.database.validate()?;
         self.jwt.validate()?;
@@ -19,7 +19,7 @@ impl AppConfig {
         Ok(())
     }
 
-    fn validate_cross_configuration(&self) -> Result<()> {
+    fn validate_cross_configuration(&self) -> anyhow::Result<()> {
         if self.jwt.access_token_expiry_minutes > 60 * 24 {
             anyhow::bail!("JWT access token expiry should not exceed 24 hours")
         }
@@ -51,7 +51,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> anyhow::Result<()> {
         if self.port == 0 {
             anyhow::bail!("Server port must be greater than 0.")
         }
@@ -77,7 +77,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> anyhow::Result<()> {
         if self.url.is_empty() {
             anyhow::bail!("DATABASE_URL connot be empty.")
         }
@@ -93,7 +93,7 @@ pub struct UsersSecret {
 }
 
 impl UsersSecret {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> anyhow::Result<()> {
         if self.secret.len() < 32 {
             anyhow::bail!("JWT_USERS_SECRET must be ≥ 32 chars.")
         }
@@ -111,7 +111,7 @@ pub struct JwtConfig {
 }
 
 impl JwtConfig {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> anyhow::Result<()> {
         if self.access_token_expiry_minutes == 0 {
             anyhow::bail!("JWT_ACCESS_TOKEN_EXPIRY_MINUTES must be > 0.")
         }
@@ -149,7 +149,7 @@ pub struct SecurityConfig {
 }
 
 impl SecurityConfig {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> anyhow::Result<()> {
         if self.argon2_memory_cost < 1024 {
             anyhow::bail!("ARGON2_MEMORY_COST too low (<1024 KB)")
         }

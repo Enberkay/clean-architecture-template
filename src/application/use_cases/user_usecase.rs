@@ -40,7 +40,7 @@ impl UserUseCase {
         req.validate()
             .map_err(|e| anyhow!(e.to_string()))?;
 
-        // ตรวจสอบ email ซ้ำ
+        // Check for duplicate email
         if let Some(_) = self
             .user_repo
             .find_by_email(&req.email)
@@ -67,7 +67,6 @@ impl UserUseCase {
             req.sex,
             req.phone,
             hashed_password,
-            req.branch_id,
         )
         .map_err(|e| anyhow!(e.to_string()))?;
 
@@ -186,7 +185,6 @@ impl UserUseCase {
                 req.age,
                 normalized_sex,
                 req.phone,
-                req.branch_id,
                 None,
             )
             .await
@@ -303,7 +301,6 @@ impl UserUseCase {
                 Some(user.age),
                 Some(user.sex.clone()),
                 Some(user.phone.clone()),
-                user.branch_id,
                 Some(user.is_active), // <- is_active = false
             )
             .await
@@ -347,7 +344,6 @@ impl UserUseCase {
                 Some(user.age),
                 Some(user.sex.clone()),
                 Some(user.phone.clone()),
-                user.branch_id,
                 Some(user.is_active), // <- true
             )
             .await
@@ -407,7 +403,6 @@ impl UserUseCase {
                 Some(user.age),
                 Some(user.sex.clone()),
                 Some(user.phone.clone()),
-                user.branch_id,
                 Some(user.is_active),
             )
             .await

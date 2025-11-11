@@ -7,8 +7,8 @@ use async_trait::async_trait;
 /// Password hashing interface
 #[async_trait]
 pub trait PasswordService: Send + Sync {
-    async fn hash_password(&self, password: &str) -> Result<String>;
-    async fn verify_password(&self, password: &str, hash: &str) -> Result<bool>;
+    async fn hash_password(&self, password: &str) -> anyhow::Result<String>;
+    async fn verify_password(&self, password: &str, hash: &str) -> anyhow::Result<bool>;
 }
 
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ impl Argon2PasswordHasher {
 
 #[async_trait]
 impl PasswordService for Argon2PasswordHasher {
-    async fn hash_password(&self, password: &str) -> Result<String> {
+    async fn hash_password(&self, password: &str) -> anyhow::Result<String> {
         let salt = SaltString::generate(&mut OsRng);
         let bytes_password = password.as_bytes();
 
@@ -65,7 +65,7 @@ impl PasswordService for Argon2PasswordHasher {
         Ok(result.to_string())
     }
 
-    async fn verify_password(&self, password: &str, hash: &str) -> Result<bool> {
+    async fn verify_password(&self, password: &str, hash: &str) -> anyhow::Result<bool> {
         let parsed_hash = PasswordHash::new(hash)
             .map_err(|e| anyhow::anyhow!("Invalid password hash: {}", e))?;
         let bytes_password = password.as_bytes();

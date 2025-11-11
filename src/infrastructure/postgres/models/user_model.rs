@@ -21,7 +21,7 @@ pub struct UserModel {
     pub sex: String,
     pub phone: String,
     pub password: String,
-    pub branch_id: Option<i32>,
+
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -45,7 +45,7 @@ impl From<UserModel> for UserEntity {
             sex: model.sex,
             phone: model.phone,
             password: model.password,
-            branch_id: model.branch_id,
+
             is_active: model.is_active,
             created_at: model.created_at,
             updated_at: model.updated_at,
@@ -64,7 +64,7 @@ impl From<UserEntity> for UserModel {
             sex: entity.sex,
             phone: entity.phone,
             password: entity.password,
-            branch_id: entity.branch_id,
+
             is_active: entity.is_active,
             created_at: entity.created_at,
             updated_at: entity.updated_at,

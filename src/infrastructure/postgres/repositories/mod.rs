@@ -1,14 +1,4 @@
-use anyhow::Result;
-pub mod book_image_repository;
-pub mod book_repository;
-pub mod branch_repository;
-pub mod category_repository;
-pub mod inventory_repository;
-pub mod order_repository;
-pub mod payment_repository;
 pub mod permission_repository;
-pub mod receipt_repository;
-pub mod role_repository;
-pub mod sale_repository;
-pub mod user_repository;
 pub mod role_permission_repository;
+pub mod role_repository;
+pub mod user_repository;

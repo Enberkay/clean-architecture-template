@@ -26,7 +26,6 @@ pub struct CreateUserRequest {
     #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
 
-    pub branch_id: Option<i32>,
     pub role_ids: Option<Vec<i32>>,
 }
 
@@ -49,8 +48,6 @@ pub struct UpdateUserRequest {
 
     #[validate(length(min = 6, max = 20, message = "Phone must be 6-20 characters"))]
     pub phone: Option<String>,
-
-    pub branch_id: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -74,7 +71,6 @@ pub struct UserResponse {
     pub age: i32,
     pub sex: String,
     pub phone: String,
-    pub branch_id: Option<i32>,
     pub is_active: bool,
     pub roles: Vec<RoleSummary>,
     pub created_at: DateTime<Utc>,
@@ -90,7 +86,6 @@ impl From<UserEntity> for UserResponse {
             age: user.age,
             sex: user.sex,
             phone: user.phone,
-            branch_id: user.branch_id,
             is_active: user.is_active,
             roles: Vec::new(),
             created_at: user.created_at,

@@ -1,5 +1,4 @@
 use anyhow::Result;
-use anyhow::Result;
 use async_trait::async_trait;
 use sqlx::{PgPool, Row};
 
@@ -21,11 +20,11 @@ impl PostgresUserRepository {
 
 #[async_trait]
 impl UserRepository for PostgresUserRepository {
-    async fnOption<UserEntity>> {
+    async fn find_by_id(&self, id: i32) -> Result<Option<UserEntity>> {
         let result = sqlx::query_as::<_, UserModel>(
             r#"
             SELECT id, fname, lname, email, age, sex, phone, password,
-                   branch_id, is_active, created_at, updated_at
+                   is_active, created_at, updated_at
             FROM users
             WHERE id = $1
             "#,
@@ -37,11 +36,11 @@ impl UserRepository for PostgresUserRepository {
         Ok(result.map(UserEntity::from))
     }
 
-    async fnOption<UserEntity>> {
+    async fn find_by_email(&self, email: &str) -> Result<Option<UserEntity>> {
         let result = sqlx::query_as::<_, UserModel>(
             r#"
             SELECT id, fname, lname, email, age, sex, phone, password,
-                   branch_id, is_active, created_at, updated_at
+                   is_active, created_at, updated_at
             FROM users
             WHERE email = $1
             "#,
@@ -53,11 +52,11 @@ impl UserRepository for PostgresUserRepository {
         Ok(result.map(UserEntity::from))
     }
 
-    async fnVec<UserEntity>> {
+    async fn find_all(&self) -> Result<Vec<UserEntity>> {
         let results = sqlx::query_as::<_, UserModel>(
             r#"
             SELECT id, fname, lname, email, age, sex, phone, password,
-                   branch_id, is_active, created_at, updated_at
+                   is_active, created_at, updated_at
             FROM users
             ORDER BY id ASC
             "#,
@@ -68,14 +67,14 @@ impl UserRepository for PostgresUserRepository {
         Ok(results.into_iter().map(UserEntity::from).collect())
     }
 
-    async fni32> {
+    async fn save(&self, user: &UserEntity) -> Result<i32> {
         let row = sqlx::query(
             r#"
             INSERT INTO users
                 (fname, lname, email, age, sex, phone, password,
-                 branch_id, is_active, created_at, updated_at)
+                 is_active, created_at, updated_at)
             VALUES
-                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING id
             "#,
         )
@@ -86,7 +85,6 @@ impl UserRepository for PostgresUserRepository {
         .bind(&user.sex)
         .bind(&user.phone)
         .bind(&user.password)
-        .bind(user.branch_id)
         .bind(user.is_active)
         .bind(user.created_at)
         .bind(user.updated_at)
@@ -105,7 +103,6 @@ impl UserRepository for PostgresUserRepository {
         age: Option<i32>,
         sex: Option<String>,
         phone: Option<String>,
-        branch_id: Option<i32>,
         is_active: Option<bool>,
     ) -> Result<UserEntity> {
         let result = sqlx::query_as!(
@@ -119,12 +116,11 @@ impl UserRepository for PostgresUserRepository {
                 age = COALESCE($4, age),
                 sex = COALESCE($5, sex),
                 phone = COALESCE($6, phone),
-                branch_id = COALESCE($7, branch_id),
-                is_active = COALESCE($8, is_active),
+                is_active = COALESCE($7, is_active),
                 updated_at = NOW()
-            WHERE id = $9
+            WHERE id = $8
             RETURNING id, fname, lname, email, age, sex, phone, password,
-                      branch_id, is_active, created_at, updated_at
+                      is_active, created_at, updated_at
             "#,
             first_name.as_deref(),
             last_name.as_deref(),
@@ -132,7 +128,6 @@ impl UserRepository for PostgresUserRepository {
             age,
             sex.as_deref(),
             phone.as_deref(),
-            branch_id,
             is_active,
             id,
         )
@@ -142,14 +137,14 @@ impl UserRepository for PostgresUserRepository {
         Ok(UserEntity::from(result))
     }
 
-    async fn()> {
+    async fn delete(&self, id: i32) -> Result<()> {
         sqlx::query!("DELETE FROM users WHERE id = $1", id)
             .execute(&self.pool)
             .await?;
         Ok(())
     }
 
-    async fn()> {
+    async fn assign_roles(&self, user_id: i32, role_ids: &[i32]) -> Result<()> {
         for &role_id in role_ids {
             sqlx::query!(
                 r#"
@@ -166,7 +161,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(())
     }
 
-    async fn()> {
+    async fn remove_roles(&self, user_id: i32, role_ids: &[i32]) -> Result<()> {
         sqlx::query!(
             "DELETE FROM user_roles WHERE user_id = $1 AND role_id = ANY($2)",
             user_id,
@@ -177,7 +172,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(())
     }
 
-    async fnVec<RoleEntity>> {
+    async fn find_roles(&self, user_id: i32) -> Result<Vec<RoleEntity>> {
         let results = sqlx::query_as::<_, RoleModel>(
             r#"
             SELECT r.id, r.name, r.description, r.created_at, r.updated_at

@@ -1,6 +1,6 @@
 use axum::{
     http::{header::SET_COOKIE, HeaderMap, HeaderValue},
-    response::{IntoResponse, Response},
+    response::Response,
 };
 
 /// Cookie configuration constants

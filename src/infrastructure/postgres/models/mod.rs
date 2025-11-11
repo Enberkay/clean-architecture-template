@@ -1,13 +1,4 @@
-pub mod book_model;
-pub mod book_image_model;
-pub mod branch_model;
-pub mod category_model;
-pub mod inventory_model;
-pub mod order_model;
-pub mod payment_model;
-pub mod sale_model;
 pub mod permission_model;
-pub mod receipt_model;
 pub mod role_model;
 pub mod user_model;
 pub mod role_permissions_model;

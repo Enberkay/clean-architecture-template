@@ -8,12 +8,11 @@ use axum::{
 use std::sync::Arc;
 use serde_json::json;
 use validator::Validate;
-use anyhow::anyhow;
 
 use crate::{
     application::{
         use_cases::auth_usecase::AuthUseCase,
-        dtos::auth_dto::{LoginRequest, RegisterRequest, RefreshResponse},
+        dtos::auth_dto::{LoginRequest, RegisterRequest},
     },
     presentation::http::cookie_utils::{
         set_access_token_cookie,
@@ -24,7 +23,7 @@ use crate::{
 };
 
 /// Convert anyhow::Error to HTTP response
-fn handle_anyhow_error(err: anyhow::Error) -> impl IntoResponse {
+fn handle_anyhow_error(err: anyhow::Error) -> axum::response::Response {
     let (status, message) = if err.to_string().contains("not found") {
         (StatusCode::NOT_FOUND, err.to_string())
     } else if err.to_string().contains("unauthorized") || err.to_string().contains("Invalid credentials") {
@@ -39,10 +38,11 @@ fn handle_anyhow_error(err: anyhow::Error) -> impl IntoResponse {
 
     let response = json!({
         "success": false,
-        "error": message
+        "message": message,
+        "error": err.to_string()
     });
 
-    (status, Json(response))
+    (status, Json(response)).into_response()
 }
 
 #[derive(Clone)]
@@ -52,7 +52,7 @@ pub struct AuthRouterState {
 }
 
 pub fn routes(
-    auth_service: Arc<AuthUseCase>, 
+    auth_service: Arc<AuthUseCase>,
     jwt_repo: Arc<dyn crate::infrastructure::JwtService>
 ) -> Router {
     let state = AuthRouterState { auth_service, jwt_repo };
@@ -111,7 +111,10 @@ async fn register(
         )
             .into_response(),
 
-        Err(err) => err.into_response(), // anyhow::Error → JSON response
+        Err(err) => {
+            let error_response = handle_anyhow_error(err);
+            error_response
+        },
     }
 }
 
@@ -166,7 +169,7 @@ async fn login(
             set_refresh_token_cookie(response, &refresh_token)
         },
 
-        Err(err) => handle_anyhow_error(err),
+        Err(err) => handle_anyhow_error(err).into_response(),
     }
 }
 
@@ -206,7 +209,7 @@ async fn refresh_token(
 
         Err(err) => {
             let error_response = handle_anyhow_error(err);
-            clear_all_auth_cookies(error_response)
+            clear_all_auth_cookies(error_response).into_response()
         }
     }
 }

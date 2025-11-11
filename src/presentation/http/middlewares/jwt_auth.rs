@@ -102,8 +102,10 @@ where
     }
 }
 
+
+
 #[derive(Debug)]
-enum AuthError {
+pub enum AuthError {
     MissingAccessToken,
     InvalidToken,
 }

@@ -12,7 +12,6 @@ pub struct UserEntity {
     pub sex: String,
     pub phone: String,
     pub password: String,
-    pub branch_id: Option<i32>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -28,7 +27,6 @@ impl UserEntity {
         sex: String,
         phone: String,
         password: String,
-        branch_id: Option<i32>,
     ) -> Result<Self> {
         Self::validate_name(&first_name)?;
         Self::validate_name(&last_name)?;
@@ -48,7 +46,6 @@ impl UserEntity {
             sex: sex.trim().to_uppercase(),
             phone: phone.trim().to_string(),
             password,
-            branch_id,
             is_active: true,
             created_at: now,
             updated_at: now,
@@ -121,7 +118,7 @@ impl UserEntity {
     }
 
     fn validate_age(age: i32) -> Result<()> {
-        if !(1..=120).contains(&age) {
+        if age < 1 || age > 120 {
             return Err(anyhow!("Age must be between 1 and 120"));
         }
         Ok(())

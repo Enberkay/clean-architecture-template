@@ -1,12 +1,4 @@
 pub mod auth_dto;
-pub mod book_dto;
 pub mod user_dto;
-pub mod order_dto;
-pub mod payment_dto;
-pub mod sale_dto;
-pub mod category_dto;
-pub mod branch_dto;
-pub mod receipt_dto;
-pub mod inventory_dto;
 pub mod permission_dto;
 pub mod role_dto;

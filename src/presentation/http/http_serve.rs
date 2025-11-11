@@ -18,7 +18,6 @@ use crate::{
         postgres::{
             postgres_connector::PgPoolSquad,
             repositories::{
-                branch_repository::PostgresBranchRepository,
                 permission_repository::PostgresPermissionRepository,
                 role_permission_repository::PostgresRolePermissionRepository,
                 role_repository::PostgresRoleRepository,
@@ -27,10 +26,9 @@ use crate::{
         },
 
     },
-    presentation::http::{default_router, routers},
+    presentation::http::{health_router, routers},
     application::use_cases::{
         auth_usecase::AuthUseCase,
-        branch_usecase::BranchUseCase,
         permission_usecase::PermissionUseCase,
         role_usecase::RoleUseCase,
         user_usecase::UserUseCase,
@@ -38,19 +36,14 @@ use crate::{
 };
 
 /// Starts the Axum HTTP server with all routers configured.
-pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> Result<()> {
-    // --- Redis setup (disabled for stateless auth) ---
-    // Redis disabled for stateless authentication
-    // let redis_pool = Arc::new(RedisPool::new(&config.redis).await?);
-
-
+pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> anyhow::Result<()> {
 
     // --- Base repositories ---
     let user_repo = Arc::new(PostgresUserRepository::new(db_pool.as_ref().clone()));
     let role_repo = Arc::new(PostgresRoleRepository::new(db_pool.as_ref().clone()));
     let perm_repo = Arc::new(PostgresPermissionRepository::new(db_pool.as_ref().clone()));
     let role_perm_repo = Arc::new(PostgresRolePermissionRepository::new(db_pool.as_ref().clone()));
-    let branch_repo = Arc::new(PostgresBranchRepository::new(db_pool.as_ref().clone()));
+
 
     // --- Security components ---
     let password_repo = Arc::new(Argon2PasswordHasher::new(
@@ -78,20 +71,20 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
         role_perm_repo,
     ));
     let permission_usecase = Arc::new(PermissionUseCase::new(perm_repo));
-    let branch_usecase = Arc::new(BranchUseCase::new(branch_repo));
+
 
     // --- Health router ---
-    let health_router = Router::new().route("/health", get(default_router::health_check));
+    let health_router = Router::new().route("/health", get(health_router::health_check));
 
     // --- Application router ---
     let app = Router::new()
         .merge(health_router)
-        .fallback(default_router::not_found)
+        .fallback(health_router::not_found)
         .nest("/auth", routers::auth_router::routes(auth_usecase, jwt_repo.clone()))
         .nest("/users", routers::user_router::routes(user_usecase, config.users_secret.secret.clone()))
         .nest("/roles", routers::role_router::routes(role_usecase))
         .nest("/permissions", routers::permission_router::routes(permission_usecase))
-        .nest("/branches", routers::branch_router::routes(branch_usecase)) // ✅ Added branch routes
+
         // --- Global middlewares ---
         .layer(TimeoutLayer::new(Duration::from_secs(
             config.server.timeout_seconds.into(),
