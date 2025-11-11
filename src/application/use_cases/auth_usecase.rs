@@ -105,7 +105,7 @@ impl AuthUseCase {
         // สร้าง Refresh Token (7 วัน)
         let refresh_token = self
             .jwt_repo
-            .generate_refresh_token(user.id, 7) // 7 days
+            .generate_refresh_token(user.id) // 7 days hardcoded
             .await
             .map_err(|e| anyhow!("Failed to create refresh token: {}", e))?;
 
@@ -125,7 +125,7 @@ impl AuthUseCase {
     /// Refresh token flow - ใช้ RT สร้าง AT ใหม่และคืน user info
     pub async fn refresh_token(&self, refresh_token: &str) -> Result<(RefreshResponse, String)> {
         // ตรวจสอบ RT โดยใช้ refresh secret
-        let user_id = crate::infrastructure::validate_refresh_token(refresh_token, &self.jwt_repo.get_refresh_secret()).map_err(|e| {
+        let user_id = self.jwt_repo.validate_refresh_token(refresh_token).await.map_err(|e| {
             anyhow!("Invalid or expired refresh token: {}", e)
         })?;
 

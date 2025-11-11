@@ -5,7 +5,6 @@ pub struct AppConfig {
     pub users_secret: UsersSecret,
     pub jwt: JwtConfig,
     pub environment: Environment,
-    pub security: SecurityConfig,
 }
 
 impl AppConfig {
@@ -13,7 +12,6 @@ impl AppConfig {
         self.server.validate()?;
         self.database.validate()?;
         self.jwt.validate()?;
-        self.security.validate()?;
         self.users_secret.validate()?;
         self.validate_cross_configuration()?;
         Ok(())
@@ -108,12 +106,16 @@ impl UsersSecret {
 #[derive(Debug, Clone)]
 pub struct JwtConfig {
     pub access_token_expiry_minutes: u64,
+    pub refresh_token_expiry_days: u64,
 }
 
 impl JwtConfig {
     pub fn validate(&self) -> anyhow::Result<()> {
         if self.access_token_expiry_minutes == 0 {
             anyhow::bail!("JWT_ACCESS_TOKEN_EXPIRY_MINUTES must be > 0.")
+        }
+        if self.refresh_token_expiry_days == 0 {
+            anyhow::bail!("JWT_REFRESH_TOKEN_EXPIRY_DAYS must be > 0.")
         }
         Ok(())
     }
@@ -137,28 +139,5 @@ impl std::str::FromStr for Environment {
             "production" | "prod" => Ok(Self::Production),
             _ => Err(anyhow::anyhow!("Invalid ENVIRONMENT: {}", s)),
         }
-    }
-}
-
-// SecurityConfig
-#[derive(Debug, Clone)]
-pub struct SecurityConfig {
-    pub argon2_memory_cost: u32,
-    pub argon2_time_cost: u32,
-    pub argon2_parallelism: u32,
-}
-
-impl SecurityConfig {
-    pub fn validate(&self) -> anyhow::Result<()> {
-        if self.argon2_memory_cost < 1024 {
-            anyhow::bail!("ARGON2_MEMORY_COST too low (<1024 KB)")
-        }
-        if self.argon2_time_cost == 0 {
-            anyhow::bail!("ARGON2_TIME_COST must be > 0")
-        }
-        if self.argon2_parallelism == 0 {
-            anyhow::bail!("ARGON2_PARALLELISM must be > 0")
-        }
-        Ok(())
     }
 }

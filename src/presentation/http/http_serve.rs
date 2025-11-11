@@ -46,18 +46,14 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
 
 
     // --- Security components ---
-    let password_repo = Arc::new(Argon2PasswordHasher::new(
-        config.security.argon2_memory_cost,
-        config.security.argon2_time_cost,
-        config.security.argon2_parallelism,
-    ));
+    let password_repo = Arc::new(Argon2PasswordHasher::new());
     let jwt_repo = Arc::new(JwtTokenService::new(
         &config.users_secret.secret,
         &config.users_secret.refresh_secret,
         config.jwt.access_token_expiry_minutes,
+        config.jwt.refresh_token_expiry_days,
     ));
 
-    // --- Services ---
     // --- Use Cases ---
     let auth_usecase = Arc::new(AuthUseCase::new(
         user_repo.clone(),

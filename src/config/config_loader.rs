@@ -37,17 +37,11 @@ pub fn load() -> Result<AppConfig> {
     // JWT
     let jwt = JwtConfig {
         access_token_expiry_minutes: parse_env("JWT_ACCESS_TOKEN_EXPIRY_MINUTES")?,
+        refresh_token_expiry_days: parse_env("JWT_REFRESH_TOKEN_EXPIRY_DAYS")?,
     };
 
     // Environment
     let environment: Environment = required_env("ENVIRONMENT")?.parse()?;
-
-    // Security
-    let security = SecurityConfig {
-        argon2_memory_cost: parse_env("ARGON2_MEMORY_COST")?,
-        argon2_time_cost: parse_env("ARGON2_TIME_COST")?,
-        argon2_parallelism: parse_env("ARGON2_PARALLELISM")?,
-    };
 
     // Secrets
     let users_secret = UsersSecret {
@@ -61,7 +55,6 @@ pub fn load() -> Result<AppConfig> {
         database,
         jwt,
         environment,
-        security,
         users_secret,
     };
 
