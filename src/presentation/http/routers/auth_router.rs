@@ -14,6 +14,7 @@ use crate::{
         use_cases::auth_usecase::AuthUseCase,
         dtos::auth_dto::{LoginRequest, RegisterRequest},
     },
+
     presentation::http::cookie_utils::{
         set_access_token_cookie,
         set_refresh_token_cookie,
@@ -49,13 +50,19 @@ fn handle_anyhow_error(err: anyhow::Error) -> axum::response::Response {
 pub struct AuthRouterState {
     pub auth_service: Arc<AuthUseCase>,
     pub jwt_repo: Arc<dyn crate::infrastructure::JwtService>,
+    pub config: crate::config::config_model::JwtConfig,
 }
 
 pub fn routes(
     auth_service: Arc<AuthUseCase>,
-    jwt_repo: Arc<dyn crate::infrastructure::JwtService>
+    jwt_repo: Arc<dyn crate::infrastructure::JwtService>,
+    config: crate::config::config_model::JwtConfig,
 ) -> Router {
-    let state = AuthRouterState { auth_service, jwt_repo };
+    let state = AuthRouterState { 
+        auth_service, 
+        jwt_repo, 
+        config,
+    };
 
     Router::new()
         .route("/register", post(register))
@@ -140,8 +147,11 @@ async fn login(
             ).into_response();
 
             // Set both AT and RT cookies
-            let response = set_access_token_cookie(response, &access_token);
-            set_refresh_token_cookie(response, &refresh_token)
+            let access_token_age: i64 = (state.config.access_token_expiry_minutes * 60) as i64;
+            let refresh_token_age: i64 = (state.config.refresh_token_expiry_days * 24 * 60 * 60) as i64;
+            
+            let response = set_access_token_cookie(response, &access_token, access_token_age);
+            set_refresh_token_cookie(response, &refresh_token, refresh_token_age)
         },
 
         Err(err) => handle_anyhow_error(err).into_response(),
@@ -179,7 +189,8 @@ async fn refresh_token(
             ).into_response();
 
             // Set new AT cookie (RT ยังเดิม)
-            set_access_token_cookie(response, &new_access_token)
+            let access_token_age: i64 = (state.config.access_token_expiry_minutes * 60) as i64;
+            set_access_token_cookie(response, &new_access_token, access_token_age)
         },
 
         Err(err) => {

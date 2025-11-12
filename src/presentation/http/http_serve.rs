@@ -97,7 +97,7 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
     let app = Router::new()
         .route("/health", get(health_check))
         .fallback(not_found)
-        .nest("/auth", routers::auth_router::routes(auth_usecase, jwt_repo.clone()))
+        .nest("/auth", routers::auth_router::routes(auth_usecase, jwt_repo.clone(), config.jwt.clone()))
         .nest("/users", routers::user_router::routes(user_usecase, config.users_secret.secret.clone()))
         .nest("/roles", routers::role_router::routes(role_usecase))
         .nest("/permissions", routers::permission_router::routes(permission_usecase))
