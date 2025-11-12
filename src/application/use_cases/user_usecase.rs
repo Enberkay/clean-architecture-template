@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use validator::Validate;
+
 use anyhow::{Result, anyhow};
 
 use crate::application::dtos::user_dto::{
@@ -36,9 +36,7 @@ impl UserUseCase {
 
     /// Create a new user — now hashes password & supports role assignment
     pub async fn create_user(&self, req: CreateUserRequest) -> Result<UserResponse> {
-        // Validate DTO
-        req.validate()
-            .map_err(|e| anyhow!(e.to_string()))?;
+
 
         // Check for duplicate email
         if let Some(_) = self
@@ -168,9 +166,7 @@ impl UserUseCase {
             None => return Err(anyhow!("User not found")),
         };
 
-        // Validate DTO
-        req.validate()
-            .map_err(|e| anyhow!(e.to_string()))?;
+
 
         let normalized_sex = req.sex.map(|s| s.to_uppercase());
 
@@ -366,9 +362,7 @@ impl UserUseCase {
         id: i32,
         req: UpdatePasswordRequest,
     ) -> Result<UserResponse> {
-        // Validate payload
-        req.validate()
-            .map_err(|e| anyhow!(e.to_string()))?;
+
 
         // หา user ก่อน
         let mut user = match self

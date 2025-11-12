@@ -7,7 +7,7 @@ use axum::{
 };
 use std::sync::Arc;
 use serde_json::json;
-use validator::Validate;
+
 
 use crate::{
     application::{
@@ -86,19 +86,7 @@ async fn register(
         }
     };
 
-    // --- Validate DTO ---
-    if let Err(e) = req.validate() {
-        let msg = e
-            .field_errors()
-            .values()
-            .flat_map(|errs| errs.iter().filter_map(|err| err.message.clone()))
-            .map(|m| m.to_string())
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let response = json!({ "success": false, "error": msg });
-        return (StatusCode::BAD_REQUEST, Json(response)).into_response();
-    }
+    // Validation is now handled in UseCase layer
 
     // --- Call service ---
     match state.auth_service.register(req).await {
@@ -139,20 +127,7 @@ async fn login(
         }
     };
 
-    // --- Validate DTO ---
-    if let Err(e) = req.validate() {
-        let msg = e
-            .field_errors()
-            .values()
-            .flat_map(|errs| errs.iter().filter_map(|err| err.message.clone()))
-            .map(|m| m.to_string())
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let response = json!({ "success": false, "error": msg });
-        return (StatusCode::BAD_REQUEST, Json(response)).into_response();
-    }
-
+    // Validation is now handled in UseCase layer
     // --- Call service ---
     match state.auth_service.login(req).await {
         Ok((login_res, access_token, refresh_token)) => {

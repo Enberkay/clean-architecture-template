@@ -5,8 +5,6 @@ use axum::{
     Json, Router, http::StatusCode,
 };
 
-use validator::Validate;
-
 use crate::application::{
     dtos::role_dto::{CreateRoleRequest, UpdateRoleRequest, RoleResponse},
     use_cases::role_usecase::RoleUseCase,
@@ -28,9 +26,7 @@ async fn create_role(
     State(service): State<Arc<RoleUseCase>>,
     Json(payload): Json<CreateRoleRequest>,
 ) -> Result<Json<RoleResponse>, (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, anyhow::anyhow!("Validation error: {}", e).to_string()))?;
+    // Validation is now handled in UseCase layer
 
     match service.create_role(payload).await {
         Ok(role) => Ok(Json(role)),
@@ -70,10 +66,8 @@ async fn update_role(
     Path(id): Path<i32>,
     Json(payload): Json<UpdateRoleRequest>,
 ) -> Result<Json<RoleResponse>, (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, anyhow::anyhow!("Validation error: {}", e).to_string()))?;
-
+    // Validation is now handled in UseCase layer
+    
     // Update และคืนข้อมูลที่อัพเดตแล้วในครั้งเดียว
     match service.update_role(id, payload).await {
         Ok(role) => Ok(Json(role)),

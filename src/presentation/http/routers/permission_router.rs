@@ -5,8 +5,6 @@ use axum::{
     Json, Router, http::StatusCode,
 };
 
-use validator::Validate;
-
 use crate::application::{
     dtos::permission_dto::{CreatePermissionRequest, UpdatePermissionRequest, PermissionResponse},
     use_cases::permission_usecase::PermissionUseCase,
@@ -28,9 +26,7 @@ async fn create_permission(
     State(service): State<Arc<PermissionUseCase>>,
     Json(payload): Json<CreatePermissionRequest>,
 ) -> Result<Json<PermissionResponse>, (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, anyhow::anyhow!("Validation error: {}", e).to_string()))?;
+    // Validation is now handled in UseCase layer
     
     match service.create_permission(payload).await {
         Ok(permission) => Ok(Json(permission)),
@@ -70,10 +66,8 @@ async fn update_permission(
     Path(id): Path<i32>,
     Json(payload): Json<UpdatePermissionRequest>,
 ) -> Result<Json<PermissionResponse>, (StatusCode, String)> {
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, anyhow::anyhow!("Validation error: {}", e).to_string()))?;
-
+    // Validation is now handled in UseCase layer
+    
     // Update และคืนข้อมูลที่อัพเดตแล้วในครั้งเดียว
     match service.update_permission(id, payload).await {
         Ok(permission) => Ok(Json(permission)),

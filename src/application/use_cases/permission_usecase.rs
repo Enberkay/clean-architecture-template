@@ -18,17 +18,17 @@ impl PermissionUseCase {
     }
 
     pub async fn create_permission(&self, req: CreatePermissionRequest) -> Result<PermissionResponse> {
-        let mut permission = PermissionEntity::new(req.name, req.description)
+        let permission = PermissionEntity::new(req.name, req.description)
             .map_err(|e| anyhow!(e.to_string()))?;
 
         let id = self.repo.save(&permission).await.map_err(|e| {
             anyhow!(format!("Failed to save permission: {}", e))
         })?;
 
-        // Set the returned ID to the entity
-        permission.id = id;
+        let mut response_permission = permission;
+        response_permission.id = id;
 
-        Ok(PermissionResponse::from(permission))
+        Ok(PermissionResponse::from(response_permission))
     }
 
     pub async fn get_all_permissions(&self) -> Result<Vec<PermissionResponse>> {
@@ -46,13 +46,6 @@ impl PermissionUseCase {
     }
 
     pub async fn update_permission(&self, id: i32, req: UpdatePermissionRequest) -> Result<PermissionResponse> {
-        // Validate input first
-        if let Some(name) = &req.name {
-            let temp_permission = PermissionEntity::new(name.clone(), None)
-                .map_err(|e| anyhow!(e.to_string()))?;
-            temp_permission.validate().map_err(|e| anyhow!(e.to_string()))?;
-        }
-
         // Use COALESCE update - single query approach
         let updated_permission = self.repo.update(
             id,

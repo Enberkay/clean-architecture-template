@@ -1,27 +1,18 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
-use validator::Validate;
 use crate::domain::entities::{role::RoleEntity, permission::PermissionEntity};
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize)]
 pub struct CreateRoleRequest {
-    #[validate(length(min = 2, max = 50, message = "Role name must be 2-50 characters"))]
     pub name: String,
-
-    #[validate(length(max = 255, message = "Description too long (max 255 chars)"))]
     pub description: Option<String>,
-
     pub permission_ids: Option<Vec<i32>>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize)]
 pub struct UpdateRoleRequest {
-    #[validate(length(min = 2, max = 50, message = "Role name must be 2-50 characters"))]
     pub name: Option<String>,
-
-    #[validate(length(max = 255, message = "Description too long (max 255 chars)"))]
     pub description: Option<String>,
-
     pub permission_ids: Option<Vec<i32>>,
 }
 

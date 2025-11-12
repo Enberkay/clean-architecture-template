@@ -73,13 +73,6 @@ impl RoleUseCase {
             None => return Err(anyhow!("Role not found")),
         };
 
-        // Validate role name if provided
-        if let Some(name) = &req.name {
-            let temp_role = crate::domain::entities::role::RoleEntity::new(name.clone(), None)
-                .map_err(|e| anyhow!(e.to_string()))?;
-            temp_role.validate().map_err(|e| anyhow!(e.to_string()))?;
-        }
-
         // Update role basic info using COALESCE
         let updated_role = self.role_repo.update(
             id,

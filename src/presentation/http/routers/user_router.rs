@@ -3,7 +3,7 @@ use axum::{
     Json, Router, extract::{Path, State}, routing::{delete, get, patch, post, put}, http::StatusCode,
 };
 
-use validator::Validate;
+
 use crate::application::{
     dtos::user_dto::{CreateUserRequest, UpdatePasswordRequest, UpdateUserRequest, UserResponse},
     use_cases::user_usecase::UserUseCase,
@@ -28,10 +28,7 @@ async fn create_user(
     State(service): State<Arc<UserUseCase>>,
     Json(payload): Json<CreateUserRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, String)> {
-    //Validate request payload
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, anyhow::anyhow!("Validation error: {}", e).to_string()))?;
+    // Validation is now handled in UseCase layer
     
     match service.create_user(payload).await {
         Ok(user) => Ok(Json(user)),
@@ -71,10 +68,7 @@ async fn update_user(
     Path(id): Path<i32>,
     Json(payload): Json<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, String)> {
-    //Validate request payload
-    payload
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, anyhow::anyhow!("Validation error: {}", e).to_string()))?;
+    // Validation is now handled in UseCase layer
  
     // Update and return updated user data
     match service.update_user(id, payload).await {

@@ -36,7 +36,6 @@ sha2 = "0.10"
 hex = "0.4.3"
 axum-extra = { version = "0.10.3", features = ["cookie"] }
 
-validator = { version = "0.20.0", features = ["derive"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 dotenvy = "0.15.0"
 anyhow = "1"
