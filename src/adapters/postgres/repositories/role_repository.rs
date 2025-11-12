@@ -7,7 +7,7 @@ use crate::domain::{
     entities::permission::PermissionEntity,
     repositories::role_repository::RoleRepository,
 };
-use crate::infrastructure::postgres::models::{
+use crate::adapters::postgres::models::{
     role_model::{RoleModel, RolePermissionModel},
     permission_model::PermissionModel,
 };

@@ -6,7 +6,7 @@ use crate::domain::{
     entities::{user::UserEntity, role::RoleEntity},
     repositories::user_repository::UserRepository,
 };
-use crate::infrastructure::postgres::models::{user_model::UserModel, role_model::RoleModel};
+use crate::adapters::postgres::models::{user_model::UserModel, role_model::RoleModel};
 
 pub struct PostgresUserRepository {
     pool: PgPool,

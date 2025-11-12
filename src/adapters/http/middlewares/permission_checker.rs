@@ -12,7 +12,7 @@ use axum::{
 };
 use tower::{Layer, Service};
 
-use crate::infrastructure::Claims;
+use crate::infrastructure::jwt::Claims;
 
 #[derive(Clone)]
 pub struct PermissionLayer {

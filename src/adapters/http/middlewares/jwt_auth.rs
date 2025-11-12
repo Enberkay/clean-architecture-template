@@ -14,8 +14,8 @@ use tower::{Layer, Service};
 use tracing::debug;
 
 use crate::{
-    infrastructure::validate_access_token_claims,
-    presentation::http::cookie_utils::extract_access_token_from_cookie,
+    infrastructure::jwt::validate_access_token_claims,
+    adapters::http::cookie_utils::extract_access_token_from_cookie,
     application::dtos::auth_dto::UserInfo,
 };
 
@@ -142,7 +142,7 @@ impl IntoResponse for AuthError {
 
 /// Helper function to extract user info from request extensions
 pub fn extract_user_info(req: &Request) -> Result<UserInfo, AuthError> {
-    let claims = req.extensions().get::<crate::infrastructure::Claims>()
+    let claims = req.extensions().get::<crate::infrastructure::jwt::Claims>()
         .ok_or(AuthError::MissingAccessToken)?;
 
     // Mock user info - ใน production ควร query จาก database

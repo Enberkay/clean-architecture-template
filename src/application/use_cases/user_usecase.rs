@@ -10,7 +10,7 @@ use crate::{
         entities::user::UserEntity,
         repositories::{role_repository::RoleRepository, user_repository::UserRepository},
     },
-    infrastructure::security::argon2::PasswordService,
+    infrastructure::argon2::PasswordService,
 };
 
 /// UserUseCase — encapsulates application-level business logic

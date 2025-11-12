@@ -11,7 +11,7 @@ use std::{
 };
 use tower::{Layer, Service};
 
-use crate::infrastructure::Claims;
+use crate::infrastructure::jwt::Claims;
 
 /// Role-based Authorization Layer
 /// Layer for verifying if user has required roles

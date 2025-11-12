@@ -1,4 +1,4 @@
-use crate::config::config_model::*;
+use crate::infrastructure::config_model::*;
 use anyhow::{Context, Result, anyhow};
 
 pub fn load() -> Result<AppConfig> {

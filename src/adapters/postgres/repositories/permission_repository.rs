@@ -6,7 +6,7 @@ use crate::domain::{
     entities::permission::PermissionEntity,
     repositories::permission_repository::PermissionRepository,
 };
-use crate::infrastructure::postgres::models::permission_model::PermissionModel;
+use crate::adapters::postgres::models::permission_model::PermissionModel;
 
 pub struct PostgresPermissionRepository {
     pool: PgPool,

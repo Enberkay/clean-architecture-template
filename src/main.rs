@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use bookstore_backend::{
-    config::config_loader,
-    infrastructure::postgres::postgres_connector,
-    presentation::http::http_serve::start_server,
+    infrastructure::config_loader,
+    adapters::postgres::postgres_connector,
+    adapters::http::http_serve,
 };
 use tracing::{error, info};
 
@@ -52,7 +52,7 @@ async fn main() {
         app_config.server.port
     );
 
-    if let Err(e) = start_server(Arc::new(app_config), Arc::new(pg_pool)).await {
+    if let Err(e) = http_serve::start_server(Arc::new(app_config), Arc::new(pg_pool)).await {
         error!("Server encountered an error: {}", e);
     }
 }

@@ -11,22 +11,21 @@ use tower_http::{
 use tracing::info;
 
 use crate::{
-    config::config_model::AppConfig,
+    infrastructure::config_model::AppConfig,
     infrastructure::{
-        security::argon2::Argon2PasswordHasher,
-        JwtTokenService,
-        postgres::{
-            postgres_connector::PgPoolSquad,
-            repositories::{
-                permission_repository::PostgresPermissionRepository,
-                role_permission_repository::PostgresRolePermissionRepository,
-                role_repository::PostgresRoleRepository,
-                user_repository::PostgresUserRepository,
-            },
-        },
-
+        argon2::Argon2PasswordHasher,
+        jwt::JwtTokenService,
     },
-    presentation::http::routers,
+    adapters::postgres::{
+        postgres_connector::PgPoolSquad,
+        repositories::{
+            permission_repository::PostgresPermissionRepository,
+            role_permission_repository::PostgresRolePermissionRepository,
+            role_repository::PostgresRoleRepository,
+            user_repository::PostgresUserRepository,
+        },
+    },
+    adapters::http::routers,
     application::use_cases::{
         auth_usecase::AuthUseCase,
         permission_usecase::PermissionUseCase,

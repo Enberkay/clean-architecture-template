@@ -14,8 +14,7 @@ use crate::{
         use_cases::auth_usecase::AuthUseCase,
         dtos::auth_dto::{LoginRequest, RegisterRequest},
     },
-
-    presentation::http::cookie_utils::{
+    adapters::http::cookie_utils::{
         set_access_token_cookie,
         set_refresh_token_cookie,
         extract_refresh_token_from_cookie,
@@ -49,14 +48,14 @@ fn handle_anyhow_error(err: anyhow::Error) -> axum::response::Response {
 #[derive(Clone)]
 pub struct AuthRouterState {
     pub auth_service: Arc<AuthUseCase>,
-    pub jwt_repo: Arc<dyn crate::infrastructure::JwtService>,
-    pub config: crate::config::config_model::JwtConfig,
+    pub jwt_repo: Arc<dyn crate::infrastructure::jwt::JwtService>,
+    pub config: crate::infrastructure::config_model::JwtConfig,
 }
 
 pub fn routes(
     auth_service: Arc<AuthUseCase>,
-    jwt_repo: Arc<dyn crate::infrastructure::JwtService>,
-    config: crate::config::config_model::JwtConfig,
+    jwt_repo: Arc<dyn crate::infrastructure::jwt::JwtService>,
+    config: crate::infrastructure::config_model::JwtConfig,
 ) -> Router {
     let state = AuthRouterState { 
         auth_service, 
@@ -166,7 +165,7 @@ async fn refresh_token(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     // --- Extract RT from cookie ---
-    let refresh_token = match extract_refresh_token_from_cookie(&headers) {
+    let refresh_token: String = match extract_refresh_token_from_cookie(&headers) {
         Some(token) => token,
         None => {
             let response = json!({

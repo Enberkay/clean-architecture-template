@@ -9,8 +9,8 @@ use crate::{
         role_permission_repository::RolePermissionRepository,
     },
     infrastructure::{
-        security::argon2::PasswordService,
-        JwtService,
+        argon2::PasswordService,
+        jwt::JwtService,
     },
 };
 
