@@ -113,7 +113,12 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
         ))
         .layer(
             CorsLayer::new()
-                .allow_origin(Any)
+                .allow_origin(
+                    config.server.cors_allowed_origins
+                        .iter()
+                        .map(|origin| origin.parse().unwrap())
+                        .collect::<Vec<_>>()
+                )
                 .allow_methods([
                     Method::GET,
                     Method::POST,
