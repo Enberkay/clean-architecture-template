@@ -19,8 +19,6 @@ use crate::{
     adapters::postgres::{
         postgres_connector::PgPoolSquad,
         repositories::{
-            permission_repository::PostgresPermissionRepository,
-            role_permission_repository::PostgresRolePermissionRepository,
             role_repository::PostgresRoleRepository,
             user_repository::PostgresUserRepository,
         },
@@ -28,8 +26,6 @@ use crate::{
     adapters::http::routers,
     application::use_cases::{
         auth_usecase::AuthUseCase,
-        permission_usecase::PermissionUseCase,
-        role_usecase::RoleUseCase,
         user_usecase::UserUseCase,
     },
 };
@@ -63,8 +59,6 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
     // --- Base repositories ---
     let user_repo = Arc::new(PostgresUserRepository::new(db_pool.as_ref().clone()));
     let role_repo = Arc::new(PostgresRoleRepository::new(db_pool.as_ref().clone()));
-    let perm_repo = Arc::new(PostgresPermissionRepository::new(db_pool.as_ref().clone()));
-    let role_perm_repo = Arc::new(PostgresRolePermissionRepository::new(db_pool.as_ref().clone()));
 
 
     // --- Security components ---
@@ -81,15 +75,8 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
         user_repo.clone(),
         password_repo.clone(),
         jwt_repo.clone(),
-        role_perm_repo.clone(),
     ));
     let user_usecase = Arc::new(UserUseCase::new(user_repo.clone(), role_repo.clone(),password_repo.clone(),));
-    let role_usecase = Arc::new(RoleUseCase::new(
-        role_repo,
-        perm_repo.clone(),
-        role_perm_repo,
-    ));
-    let permission_usecase = Arc::new(PermissionUseCase::new(perm_repo));
 
 
     // --- Application router ---
@@ -98,8 +85,6 @@ pub async fn start_server(config: Arc<AppConfig>, db_pool: Arc<PgPoolSquad>) -> 
         .fallback(not_found)
         .nest("/auth", routers::auth_router::routes(auth_usecase, jwt_repo.clone(), config.jwt.clone()))
         .nest("/users", routers::user_router::routes(user_usecase, config.users_secret.secret.clone()))
-        .nest("/roles", routers::role_router::routes(role_usecase))
-        .nest("/permissions", routers::permission_router::routes(permission_usecase))
 
         // --- Global middlewares ---
         .layer(TimeoutLayer::new(Duration::from_secs(

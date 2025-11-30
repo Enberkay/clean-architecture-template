@@ -15,7 +15,6 @@ use tracing::debug;
 
 use crate::{
     infrastructure::jwt::validate_access_token_claims,
-    adapters::http::cookie_utils::extract_access_token_from_cookie,
     application::dtos::auth_dto::UserInfo,
 };
 
@@ -65,21 +64,26 @@ where
         let mut inner = self.inner.clone();
 
         Box::pin(async move {
-            // Extract access token from HttpOnly cookie (แทน Authorization header)
-            let access_token = extract_access_token_from_cookie(req.headers());
+            // Extract access token from Authorization header (Bearer <token>)
+            let access_token = req
+                .headers()
+                .get("authorization")
+                .and_then(|h| h.to_str().ok())
+                .and_then(|h| h.strip_prefix("Bearer "))
+                .map(|token| token.to_string());
 
             match access_token {
                 Some(token) => {
-                    debug!("Found access token in cookie, validating...");
-                    
+                    debug!("Found access token in Authorization header, validating...");
+
                     // Validate JWT token
                     match validate_access_token_claims(&token, &jwt_secret) {
                         Ok(claims) => {
                             debug!("Access token valid for user: {}", claims.sub);
-                            
+
                             // Insert claims into request extensions for downstream handlers
                             req.extensions_mut().insert(claims);
-                            
+
                             // Continue with the request
                             inner.call(req).await
                         }
@@ -92,7 +96,7 @@ where
                     }
                 }
                 None => {
-                    debug!("No access token found in cookie");
+                    debug!("No access token found in Authorization header");
                     // Missing access token
                     let error = AuthError::MissingAccessToken;
                     Ok(error.into_response())
@@ -152,7 +156,6 @@ pub fn extract_user_info(req: &Request) -> Result<UserInfo, AuthError> {
         fname: "User".to_string(),             // ควรดึงจาก DB
         lname: "Name".to_string(),             // ควรดึงจาก DB
         roles: claims.roles.clone(),
-        permissions: claims.permissions.clone(),
     };
 
     Ok(user_info)

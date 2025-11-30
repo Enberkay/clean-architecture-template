@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait JwtService: Send + Sync {
-    async fn generate_access_token(&self, user_id: i32, roles: &[String], permissions: &[String]) -> Result<String>;
+    async fn generate_access_token(&self, user_id: i32, roles: &[String]) -> Result<String>;
     async fn validate_token(&self, token: &str) -> Result<i32>;
     async fn validate_access_token_claims(&self, token: &str) -> Result<Claims>;
     async fn generate_refresh_token(&self, user_id: i32) -> Result<String>;
@@ -19,7 +19,6 @@ pub trait JwtService: Send + Sync {
 pub struct Claims {
     pub sub: String,
     pub roles: Vec<String>,
-    pub permissions: Vec<String>,
     pub exp: usize,
     pub iat: usize,
 }
@@ -44,12 +43,11 @@ impl JwtTokenService {
 
 #[async_trait]
 impl JwtService for JwtTokenService {
-    async fn generate_access_token(&self, user_id: i32, roles: &[String], permissions: &[String]) -> Result<String> {
+    async fn generate_access_token(&self, user_id: i32, roles: &[String]) -> Result<String> {
         let now = Utc::now().timestamp() as usize;
         let claims = Claims {
             sub: user_id.to_string(),
             roles: roles.to_vec(),
-            permissions: permissions.to_vec(),
             exp: now + ((self.access_token_expiry_minutes * 60) as usize),
             iat: now,
         };
@@ -91,7 +89,6 @@ impl JwtService for JwtTokenService {
         let claims = Claims {
             sub: user_id.to_string(),
             roles: Vec::new(),
-            permissions: Vec::new(),
             exp: now + ((self.refresh_token_expiry_days * 24 * 60 * 60) as usize), // configurable days
             iat: now,
         };

@@ -6,7 +6,6 @@ use anyhow::{Result, anyhow};
 use crate::{
     domain::repositories::{
         user_repository::UserRepository,
-        role_permission_repository::RolePermissionRepository,
     },
     infrastructure::{
         argon2::PasswordService,
@@ -19,7 +18,6 @@ pub struct AuthUseCase {
     user_repo: Arc<dyn UserRepository>,
     password_repo: Arc<dyn PasswordService>,
     jwt_repo: Arc<dyn JwtService>,
-    role_permission_repo: Arc<dyn RolePermissionRepository>,
 }
 
 impl AuthUseCase {
@@ -27,42 +25,12 @@ impl AuthUseCase {
         user_repo: Arc<dyn UserRepository>,
         password_repo: Arc<dyn PasswordService>,
         jwt_repo: Arc<dyn JwtService>,
-        role_permission_repo: Arc<dyn RolePermissionRepository>,
     ) -> Self {
         Self {
             user_repo,
             password_repo,
             jwt_repo,
-            role_permission_repo,
         }
-
-    }
-
-    /// Helper method to get user permissions from their roles
-    async fn get_user_permissions(&self, user_id: i32) -> Result<Vec<String>> {
-        // Get user's roles
-        let roles = self.user_repo.find_roles(user_id).await
-            .map_err(|e| anyhow!("Failed to fetch user roles: {}", e))?;
-
-        if roles.is_empty() {
-            return Ok(vec![]);
-        }
-
-        // Get all permission IDs for all user roles
-        let mut permission_ids = Vec::new();
-        for role in roles {
-            let role_permissions = self.role_permission_repo.get_permissions_for_role(role.id).await
-                .map_err(|e| anyhow!("Failed to fetch permissions for role {}: {}", role.id, e))?;
-            permission_ids.extend(role_permissions);
-        }
-
-        // Remove duplicates
-        permission_ids.sort();
-        permission_ids.dedup();
-
-        // Convert permission IDs to strings (for now, using IDs as names)
-        // TODO: This could be enhanced to fetch actual permission names
-        Ok(permission_ids.into_iter().map(|id| id.to_string()).collect())
     }
 
     /// สมัครสมาชิกใหม่
@@ -104,8 +72,8 @@ impl AuthUseCase {
         })
     }
 
-    /// เข้าสู่ระบบ - สร้างทั้ง AT และ RT
-    pub async fn login(&self, req: LoginRequest) -> Result<(LoginResponse, String, String)> {
+    /// เข้าสู่ระบบ - สร้างทั้ง AT และ RT (RT ส่งกลับเพื่อเก็บใน cookie, AT อยู่ใน response)
+    pub async fn login(&self, req: LoginRequest) -> Result<(LoginResponse, String)> {
         // ค้นหาผู้ใช้
         let user_opt = self.user_repo.find_by_email(&req.email).await.map_err(|e| {
             anyhow!("Database error while fetching user: {}", e)
@@ -125,25 +93,22 @@ impl AuthUseCase {
             return Err(anyhow!("Invalid credentials"));
         }
 
-        // Get user's real roles and permissions
+        // Get user's real roles
         let roles = self.user_repo.find_roles(user.id).await
             .map_err(|e| anyhow!("Failed to fetch user roles: {}", e))?;
         let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
 
-        let permissions = self.get_user_permissions(user.id).await
-            .map_err(|e| anyhow!("Failed to fetch user permissions: {}", e))?;
-
         // สร้าง Access Token
         let access_token = self
             .jwt_repo
-            .generate_access_token(user.id, &role_names, &permissions)
+            .generate_access_token(user.id, &role_names)
             .await
             .map_err(|e| anyhow!("Failed to create access token: {}", e))?;
 
         // สร้าง Refresh Token
         let refresh_token = self
             .jwt_repo
-            .generate_refresh_token(user.id) // 7 days hardcoded
+            .generate_refresh_token(user.id)
             .await
             .map_err(|e| anyhow!("Failed to create refresh token: {}", e))?;
 
@@ -154,14 +119,16 @@ impl AuthUseCase {
             fname: user.first_name.clone(),
             lname: user.last_name.clone(),
             roles: role_names,
-            permissions,
         };
 
-        Ok((LoginResponse { user: user_info }, access_token, refresh_token))
+        Ok((LoginResponse {
+            user: user_info,
+            access_token: access_token.clone(),
+        }, refresh_token))
     }
 
-    /// Refresh token flow - ใช้ RT สร้าง AT ใหม่และคืน user info
-    pub async fn refresh_token(&self, refresh_token: &str) -> Result<(RefreshResponse, String)> {
+    /// Refresh token flow - ใช้ RT สร้าง AT ใหม่และคืน user info (AT อยู่ใน response แล้ว)
+    pub async fn refresh_token(&self, refresh_token: &str) -> Result<RefreshResponse> {
         // ตรวจสอบ RT โดยใช้ refresh secret
         let user_id = self.jwt_repo.validate_refresh_token(refresh_token).await.map_err(|e| {
             anyhow!("Invalid or expired refresh token: {}", e)
@@ -172,18 +139,15 @@ impl AuthUseCase {
             anyhow!("Database error while fetching user: {}", e)
         })?.ok_or_else(|| anyhow!("User not found"))?;
 
-        // Get user's real roles and permissions
+        // Get user's real roles
         let roles = self.user_repo.find_roles(user.id).await
             .map_err(|e| anyhow!("Failed to fetch user roles: {}", e))?;
         let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
 
-        let permissions = self.get_user_permissions(user.id).await
-            .map_err(|e| anyhow!("Failed to fetch user permissions: {}", e))?;
-
         // สร้าง Access Token ใหม่
         let new_access_token = self
             .jwt_repo
-            .generate_access_token(user.id, &role_names, &permissions)
+            .generate_access_token(user.id, &role_names)
             .await
             .map_err(|e| anyhow!("Failed to create access token: {}", e))?;
 
@@ -194,10 +158,12 @@ impl AuthUseCase {
             fname: user.first_name.clone(),
             lname: user.last_name.clone(),
             roles: role_names,
-            permissions,
         };
 
-        Ok((RefreshResponse { user: user_info }, new_access_token))
+        Ok(RefreshResponse {
+            user: user_info,
+            access_token: new_access_token,
+        })
     }
 
     /// Validate access token และคืน user info
@@ -212,13 +178,10 @@ impl AuthUseCase {
             anyhow!("Database error while fetching user: {}", e)
         })?.ok_or_else(|| anyhow!("User not found"))?;
 
-        // Get user's real roles and permissions
+        // Get user's real roles
         let roles = self.user_repo.find_roles(user.id).await
             .map_err(|e: anyhow::Error| anyhow!("Failed to fetch user roles: {}", e))?;
         let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
-
-        let permissions = self.get_user_permissions(user.id).await
-            .map_err(|e| anyhow!("Failed to fetch user permissions: {}", e))?;
 
         // สร้าง user info สำหรับ response
         let user_info = UserInfo {
@@ -227,7 +190,6 @@ impl AuthUseCase {
             fname: user.first_name.clone(),
             lname: user.last_name.clone(),
             roles: role_names,
-            permissions,
         };
 
         Ok(user_info)

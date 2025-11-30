@@ -10,21 +10,22 @@ pub struct LoginRequest {
 #[derive(Debug, Serialize)]
 pub struct LoginResponse {
     pub user: UserInfo,
+    pub access_token: String,
 }
 
 #[derive(Debug, Serialize)]
 pub struct RefreshResponse {
     pub user: UserInfo,
+    pub access_token: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct UserInfo {
     pub id: i32,
     pub email: String,
     pub fname: String,
     pub lname: String,
     pub roles: Vec<String>,
-    pub permissions: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]

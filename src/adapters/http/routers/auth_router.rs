@@ -15,10 +15,9 @@ use crate::{
         dtos::auth_dto::{LoginRequest, RegisterRequest},
     },
     adapters::http::cookie_utils::{
-        set_access_token_cookie,
         set_refresh_token_cookie,
         extract_refresh_token_from_cookie,
-        clear_all_auth_cookies,
+        clear_refresh_token_cookie,
     },
 };
 
@@ -136,7 +135,8 @@ async fn login(
     // Validation is now handled in UseCase layer
     // --- Call service ---
     match state.auth_service.login(req).await {
-        Ok((login_res, access_token, refresh_token)) => {
+        Ok((login_res, refresh_token)) => {
+            // AT อยู่ใน login_res.access_token แล้ว, ไม่ต้องเก็บใน cookie
             let response = (
                 StatusCode::OK,
                 Json(json!({
@@ -145,11 +145,8 @@ async fn login(
                 }))
             ).into_response();
 
-            // Set both AT and RT cookies
-            let access_token_age: i64 = (state.config.access_token_expiry_minutes * 60) as i64;
+            // Set เฉพาะ RT cookie
             let refresh_token_age: i64 = (state.config.refresh_token_expiry_days * 24 * 60 * 60) as i64;
-            
-            let response = set_access_token_cookie(response, &access_token, access_token_age);
             set_refresh_token_cookie(response, &refresh_token, refresh_token_age)
         },
 
@@ -178,23 +175,21 @@ async fn refresh_token(
 
     // --- Call service ---
     match state.auth_service.refresh_token(&refresh_token).await {
-        Ok((refresh_res, new_access_token)) => {
-            let response = (
+        Ok(refresh_res) => {
+            // AT อยู่ใน refresh_res.access_token แล้ว, ไม่ต้องเก็บใน cookie
+            (
                 StatusCode::OK,
                 Json(json!({
                     "success": true,
                     "data": refresh_res
                 }))
-            ).into_response();
-
-            // Set new AT cookie (RT ยังเดิม)
-            let access_token_age: i64 = (state.config.access_token_expiry_minutes * 60) as i64;
-            set_access_token_cookie(response, &new_access_token, access_token_age)
+            ).into_response()
         },
 
         Err(err) => {
             let error_response = handle_anyhow_error(err);
-            clear_all_auth_cookies(error_response).into_response()
+            // Clear เฉพาะ RT cookie เพราะไม่มี AT cookie
+            clear_refresh_token_cookie(error_response).into_response()
         }
     }
 }
@@ -203,7 +198,7 @@ async fn refresh_token(
 // LOGOUT HANDLER
 // ===============================
 async fn logout() -> impl IntoResponse {
-    // สำหรับ stateless flow แค่ clear cookies ก็พอ
+    // สำหรับ stateless flow แค่ clear RT cookie ก็พอ (AT ไม่มี cookie)
     let response = (
         StatusCode::OK,
         Json(json!({
@@ -212,5 +207,5 @@ async fn logout() -> impl IntoResponse {
         }))
     ).into_response();
 
-    clear_all_auth_cookies(response)
+    clear_refresh_token_cookie(response)
 }

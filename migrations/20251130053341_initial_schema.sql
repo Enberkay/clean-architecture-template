@@ -27,26 +27,11 @@ CREATE TABLE roles (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE permissions (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE user_roles (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (user_id, role_id)
-);
-
-CREATE TABLE role_permissions (
-    role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-    assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (role_id, permission_id)
 );
 
 -- =====================================================
@@ -258,49 +243,9 @@ CREATE INDEX idx_receipts_reference_id ON receipts(reference_id);
 -- ================ SAMPLE DATA SEEDING ==============
 -- =====================================================
 
--- Insert default permissions
-INSERT INTO permissions (name, description) VALUES
-('USER_CREATE', 'Can create new users'),
-('USER_READ', 'Can view user information'),
-('USER_UPDATE', 'Can update user information'),
-('USER_DELETE', 'Can delete users'),
-('BOOK_CREATE', 'Can create new books'),
-('BOOK_READ', 'Can view book information'),
-('BOOK_UPDATE', 'Can update book information'),
-('BOOK_DELETE', 'Can delete books'),
-('INVENTORY_READ', 'Can view inventory levels'),
-('INVENTORY_UPDATE', 'Can update inventory levels'),
-('SALES_CREATE', 'Can create sales transactions'),
-('SALES_READ', 'Can view sales reports'),
-('ORDER_READ', 'Can view orders'),
-('ORDER_UPDATE', 'Can update order status');
-
--- Insert default roles
+-- Insert default roles (ไม่มี permissions แล้ว)
 INSERT INTO roles (name, description) VALUES
 ('ADMIN', 'System administrator with full access'),
 ('MANAGER', 'Store manager with operational access'),
 ('EMPLOYEE', 'Store employee with basic operational access'),
 ('CUSTOMER', 'Customer with self-service access');
-
--- Assign permissions to roles
-INSERT INTO role_permissions (role_id, permission_id) 
-SELECT r.id, p.id FROM roles r, permissions p
-WHERE r.name = 'ADMIN';  -- Admin gets all permissions
-
-INSERT INTO role_permissions (role_id, permission_id) 
-SELECT r.id, p.id FROM roles r, permissions p
-WHERE r.name = 'MANAGER' AND p.name IN (
-    'USER_READ', 'USER_UPDATE', 'BOOK_CREATE', 'BOOK_READ', 'BOOK_UPDATE', 
-    'INVENTORY_READ', 'INVENTORY_UPDATE', 'SALES_CREATE', 'SALES_READ', 
-    'ORDER_READ', 'ORDER_UPDATE'
-);
-
-INSERT INTO role_permissions (role_id, permission_id) 
-SELECT r.id, p.id FROM roles r, permissions p
-WHERE r.name = 'EMPLOYEE' AND p.name IN (
-    'BOOK_READ', 'INVENTORY_READ', 'SALES_CREATE', 'SALES_READ', 'ORDER_READ'
-);
-
-INSERT INTO role_permissions (role_id, permission_id) 
-SELECT r.id, p.id FROM roles r, permissions p
-WHERE r.name = 'CUSTOMER' AND p.name IN ('BOOK_READ', 'ORDER_READ');
