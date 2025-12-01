@@ -35,6 +35,22 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(result.map(RoleEntity::from))
     }
 
+    //เพิ่ม Implementation นี้ตาม Trait ใหม่
+    async fn find_by_name(&self, name: &str) -> Result<Option<RoleEntity>> {
+        let result = sqlx::query_as::<_, RoleModel>(
+            r#"
+            SELECT id, name, description, created_at, updated_at
+            FROM roles
+            WHERE name = $1
+            "#,
+        )
+        .bind(name) // name ใน DB เป็น String ปกติเทียบกับ &str ได้เลย
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(result.map(RoleEntity::from))
+    }
+
     async fn find_by_ids(&self, ids: &[i32]) -> Result<Vec<RoleEntity>> {
         let results = sqlx::query_as::<_, RoleModel>(
             r#"
@@ -75,8 +91,10 @@ impl RoleRepository for PostgresRoleRepository {
             RETURNING id
             "#,
         )
-        .bind(&role.name)
-        .bind(&role.description)
+        //แก้ไข: ดึงค่า string จาก Value Object
+        .bind(role.name.as_str()) 
+        //แก้ไข: map Option<ValueObject> -> Option<String>
+        .bind(role.description.as_ref().map(|d| d.as_str())) 
         .bind(role.created_at)
         .bind(role.updated_at)
         .fetch_one(&self.pool)
@@ -85,26 +103,23 @@ impl RoleRepository for PostgresRoleRepository {
         Ok(row.try_get("id")?)
     }
 
-    async fn update(
-        &self,
-        id: i32,
-        name: Option<String>,
-        description: Option<String>,
-    ) -> Result<RoleEntity> {
+    //แก้ไข Signature และ SQL: รับ Entity มาทั้งก้อนแล้วบันทึกสถานะล่าสุดลงไป
+    async fn update(&self, role: &RoleEntity) -> Result<RoleEntity> {
         let result = sqlx::query_as::<_, RoleModel>(
             r#"
             UPDATE roles
             SET
-                name = COALESCE($1, name),
-                description = COALESCE($2, description),
-                updated_at = NOW()
-            WHERE id = $3
+                name = $1,
+                description = $2,
+                updated_at = $3
+            WHERE id = $4
             RETURNING id, name, description, created_at, updated_at
             "#,
         )
-        .bind(name.as_deref())
-        .bind(description.as_deref())
-        .bind(id)
+        .bind(role.name.as_str()) // Update name
+        .bind(role.description.as_ref().map(|d| d.as_str())) // Update description
+        .bind(role.updated_at) // Update timestamp (ที่เปลี่ยนมาจาก Domain Logic)
+        .bind(role.id) // Where ID
         .fetch_one(&self.pool)
         .await?;
 

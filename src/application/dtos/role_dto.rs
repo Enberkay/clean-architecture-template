@@ -7,14 +7,12 @@ use crate::domain::entities::role::RoleEntity;
 pub struct CreateRoleRequest {
     pub name: String,
     pub description: Option<String>,
-    pub permission_ids: Option<Vec<i32>>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateRoleRequest {
     pub name: Option<String>,
     pub description: Option<String>,
-    pub permission_ids: Option<Vec<i32>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -30,8 +28,8 @@ impl From<RoleEntity> for RoleResponse {
     fn from(role: RoleEntity) -> Self {
         Self {
             id: role.id,
-            name: role.name.clone(),
-            description: role.description.clone(),
+            name: role.name.as_str().to_string(),
+            description: role.description.map(|d| d.as_str().to_string()),
             created_at: role.created_at,
             updated_at: role.updated_at,
         }

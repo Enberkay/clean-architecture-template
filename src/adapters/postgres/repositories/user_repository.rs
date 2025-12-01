@@ -33,6 +33,7 @@ impl UserRepository for PostgresUserRepository {
         .fetch_optional(&self.pool)
         .await?;
 
+        // UserModel -> UserEntity (แปลงผ่าน From/TryFrom ที่เราทำไว้)
         Ok(result.map(UserEntity::from))
     }
 
@@ -78,13 +79,14 @@ impl UserRepository for PostgresUserRepository {
             RETURNING id
             "#,
         )
-        .bind(&user.first_name)
-        .bind(&user.last_name)
+        // ดึงค่าจาก Value Objects
+        .bind(user.first_name.as_str())
+        .bind(user.last_name.as_str())
         .bind(user.email.as_str())
-        .bind(user.age)
+        .bind(user.age.value())
         .bind(&user.sex)
-        .bind(&user.phone)
-        .bind(&user.password)
+        .bind(user.phone.as_str())
+        .bind(user.password.as_str())
         .bind(user.is_active)
         .bind(user.created_at)
         .bind(user.updated_at)
@@ -94,46 +96,55 @@ impl UserRepository for PostgresUserRepository {
         Ok(row.try_get("id")?)
     }
 
-    async fn update(
-        &self,
-        id: i32,
-        first_name: Option<String>,
-        last_name: Option<String>,
-        email: Option<String>,
-        age: Option<i32>,
-        sex: Option<String>,
-        phone: Option<String>,
-        is_active: Option<bool>,
-    ) -> Result<UserEntity> {
+    //แก้ไข: รับ Entity ทั้งก้อน เพื่อ update state ล่าสุดลง DB
+    async fn update(&self, user: &UserEntity) -> Result<UserEntity> {
         let result = sqlx::query_as::<_, UserModel>(
             r#"
             UPDATE users
             SET
-                fname = COALESCE($1, fname),
-                lname = COALESCE($2, lname),
-                email = COALESCE($3, email),
-                age = COALESCE($4, age),
-                sex = COALESCE($5, sex),
-                phone = COALESCE($6, phone),
-                is_active = COALESCE($7, is_active),
-                updated_at = NOW()
-            WHERE id = $8
+                fname = $1,
+                lname = $2,
+                email = $3,
+                age = $4,
+                sex = $5,
+                phone = $6,
+                is_active = $7,
+                updated_at = $8
+            WHERE id = $9
             RETURNING id, fname, lname, email, age, sex, phone, password,
                       is_active, created_at, updated_at
             "#,
         )
-        .bind(first_name.as_deref())
-        .bind(last_name.as_deref())
-        .bind(email.as_deref())
-        .bind(age)
-        .bind(sex.as_deref())
-        .bind(phone.as_deref())
-        .bind(is_active)
-        .bind(id)
+        .bind(user.first_name.as_str())
+        .bind(user.last_name.as_str())
+        .bind(user.email.as_str())
+        .bind(user.age.value())
+        .bind(&user.sex)
+        .bind(user.phone.as_str())
+        .bind(user.is_active)
+        .bind(user.updated_at) // เวลาอัปเดตถูกเปลี่ยนมาจาก Domain logic แล้ว
+        .bind(user.id)
         .fetch_one(&self.pool)
         .await?;
 
         Ok(UserEntity::from(result))
+    }
+
+    //เพิ่ม: Method สำหรับเปลี่ยน Password โดยเฉพาะ
+    async fn update_password(&self, id: i32, new_password_hash: &str) -> Result<()> {
+        sqlx::query(
+            r#"
+            UPDATE users
+            SET password = $1, updated_at = NOW()
+            WHERE id = $2
+            "#,
+        )
+        .bind(new_password_hash)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
     }
 
     async fn delete(&self, id: i32) -> Result<()> {

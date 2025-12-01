@@ -19,16 +19,23 @@ impl RoleUseCase {
 
     /// Create a new role
     pub async fn create_role(&self, req: CreateRoleRequest) -> Result<RoleResponse> {
-        // สร้าง entity พร้อม validate
-        let mut role = RoleEntity::new(req.name, req.description)
-            .map_err(|e| anyhow!(e.to_string()))?;
+        // 1. ตรวจสอบว่าชื่อซ้ำไหม (Duplicate Check)
+        if self.role_repo.find_by_name(&req.name).await.map_err(|e| {
+            anyhow!("Database error while checking role name: {}", e)
+        })?.is_some() {
+            return Err(anyhow!("Role name '{}' already exists", req.name));
+        }
 
-        // Save role
+        // 2. สร้าง entity (Validation เกิดขึ้นใน RoleEntity::new -> Value Objects)
+        let mut role = RoleEntity::new(req.name, req.description)
+            .map_err(|e| anyhow!("{}", e))?;
+
+        // 3. Save role
         let role_id = self
             .role_repo
             .save(&role)
             .await
-            .map_err(|e| anyhow!(format!("Failed to save role: {}", e)))?;
+            .map_err(|e| anyhow!("Failed to save role: {}", e))?;
 
         role.id = role_id;
 
@@ -38,7 +45,7 @@ impl RoleUseCase {
     /// Get role by ID
     pub async fn get_role_by_id(&self, id: i32) -> Result<Option<RoleResponse>> {
         let role_opt = self.role_repo.find_by_id(id).await.map_err(|e| {
-            anyhow!(format!("Database error while fetching role: {}", e))
+            anyhow!("Database error while fetching role: {}", e)
         })?;
 
         Ok(role_opt.map(RoleResponse::from))
@@ -47,7 +54,7 @@ impl RoleUseCase {
     /// Get all roles
     pub async fn get_all_roles(&self) -> Result<Vec<RoleResponse>> {
         let roles = self.role_repo.find_all().await.map_err(|e| {
-            anyhow!(format!("Failed to fetch all roles: {}", e))
+            anyhow!("Failed to fetch all roles: {}", e)
         })?;
 
         Ok(roles.into_iter().map(RoleResponse::from).collect())
@@ -59,34 +66,50 @@ impl RoleUseCase {
         id: i32,
         req: UpdateRoleRequest,
     ) -> Result<RoleResponse> {
-        // ตรวจว่า role มีอยู่จริง
-        let _ = match self
+        // 1. Fetch Entity เดิมออกมาก่อน
+        let mut role = match self
             .role_repo
             .find_by_id(id)
             .await
-            .map_err(|e| anyhow!(format!("Database error: {}", e)))?
+            .map_err(|e| anyhow!("Database error: {}", e))?
         {
             Some(r) => r,
             None => return Err(anyhow!("Role not found")),
         };
 
-        // Validate name ถ้ามีการส่งมา
-        if let Some(ref name) = req.name {
-            let trimmed = name.trim();
-            if trimmed.is_empty() {
-                return Err(anyhow!("Role name cannot be empty"));
-            }
-            if trimmed.len() > 100 {
-                return Err(anyhow!("Role name too long (max 100 chars)"));
+        // 2. Handle Name Update
+        if let Some(new_name) = req.name {
+            // ถ้าชื่อเปลี่ยน ให้เช็คว่าชื่อใหม่ไปซ้ำกับคนอื่นไหม
+            if role.name.as_str() != new_name {
+                if self.role_repo.find_by_name(&new_name).await.map_err(|e| {
+                    anyhow!("Database error while checking role name: {}", e)
+                })?.is_some() {
+                    return Err(anyhow!("Role name '{}' already exists", new_name));
+                }
+
+                // สั่ง Rename (Validation ใน ValueObject จะทำงาน)
+                role.rename(new_name).map_err(|e| anyhow!("{}", e))?;
             }
         }
 
-        // Update role
+        // 3. Handle Description Update
+        if let Some(desc_str) = req.description {
+            // Logic: ถ้าส่ง empty string มา ให้ถือว่าเป็น None (ลบ description)
+            let desc_opt = if desc_str.trim().is_empty() {
+                None
+            } else {
+                Some(desc_str)
+            };
+            
+            role.update_description(desc_opt).map_err(|e| anyhow!("{}", e))?;
+        }
+
+        // 4. Save Changes (ส่ง Entity ทั้งก้อนไป update)
         let updated_role = self
             .role_repo
-            .update(id, req.name, req.description)
+            .update(&role)
             .await
-            .map_err(|e| anyhow!(format!("Failed to update role: {}", e)))?;
+            .map_err(|e| anyhow!("Failed to update role: {}", e))?;
 
         Ok(RoleResponse::from(updated_role))
     }
@@ -97,16 +120,18 @@ impl RoleUseCase {
             .role_repo
             .find_by_id(id)
             .await
-            .map_err(|e| anyhow!(format!("Failed to fetch role: {}", e)))?
+            .map_err(|e| anyhow!("Failed to fetch role: {}", e))?
         {
             Some(r) => r,
             None => return Err(anyhow!("Role not found")),
         };
 
+        // อาจเพิ่ม Logic เช็คว่ามี User ใช้งาน Role นี้อยู่ไหมก่อนลบได้ตรงนี้
+
         self.role_repo
             .delete(id)
             .await
-            .map_err(|e| anyhow!(format!("Failed to delete role: {}", e)))?;
+            .map_err(|e| anyhow!("Failed to delete role: {}", e))?;
 
         Ok(RoleResponse::from(role))
     }

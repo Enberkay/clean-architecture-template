@@ -57,9 +57,9 @@ impl From<UserEntity> for UserResponse {
             id: user.id,
             full_name: user.full_name(),
             email: user.email.as_str().to_string(),
-            age: user.age,
+            age: user.age.value(),
             sex: user.sex,
-            phone: user.phone,
+            phone: user.phone.as_str().to_string(),
             is_active: user.is_active,
             roles: Vec::new(),
             created_at: user.created_at,
@@ -72,8 +72,8 @@ impl From<RoleEntity> for RoleSummary {
     fn from(role: RoleEntity) -> Self {
         Self {
             id: role.id,
-            name: role.name,
-            description: role.description,
+            name: role.name.as_str().to_string(),
+            description: role.description.map(|d| d.as_str().to_string()),
         }
     }
 }

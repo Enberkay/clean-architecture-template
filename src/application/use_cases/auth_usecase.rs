@@ -11,6 +11,7 @@ use crate::{
         argon2::PasswordService,
         jwt::JwtService,
     },
+    domain::entities::user::UserEntity,
 };
 
 /// AuthUseCase จัดการ Authentication flow ทั้งหมด (AT/RT Stateless)
@@ -47,8 +48,8 @@ impl AuthUseCase {
             anyhow!("Failed to hash password: {}", e)
         })?;
 
-        // สร้าง user entity
-        let user = crate::domain::entities::user::UserEntity::new(
+        // สร้าง user entity (Validation เกิดขึ้นภายใน Value Objects)
+        let user = UserEntity::new(
             req.fname,
             req.lname,
             req.email,
@@ -59,7 +60,7 @@ impl AuthUseCase {
         )
         .map_err(|e| anyhow!("{}", e))?;
 
-        //save user
+        // Save user
         let user_id = self.user_repo.save(&user).await.map_err(|e| {
             anyhow!("Failed to save user: {}", e)
         })?;
@@ -67,12 +68,12 @@ impl AuthUseCase {
         Ok(RegisterResponse {
             id: user_id,
             email: user.email.as_str().to_string(),
-            fname: user.first_name.clone(),
-            lname: user.last_name.clone(),
+            fname: user.first_name.as_str().to_string(), 
+            lname: user.last_name.as_str().to_string(),
         })
     }
 
-    /// เข้าสู่ระบบ - สร้างทั้ง AT และ RT (RT ส่งกลับเพื่อเก็บใน cookie, AT อยู่ใน response)
+    /// เข้าสู่ระบบ
     pub async fn login(&self, req: LoginRequest) -> Result<(LoginResponse, String)> {
         // ค้นหาผู้ใช้
         let user_opt = self.user_repo.find_by_email(&req.email).await.map_err(|e| {
@@ -84,8 +85,8 @@ impl AuthUseCase {
             None => return Err(anyhow!("Invalid credentials")),
         };
 
-        // ตรวจรหัสผ่าน
-        let valid = self.password_repo.verify_password(&req.password, &user.password).await.map_err(|e| {
+        // ตรวจรหัสผ่าน (ดึง string จาก Password VO)
+        let valid = self.password_repo.verify_password(&req.password, user.password.as_str()).await.map_err(|e| {
             anyhow!("Failed to verify password: {}", e)
         })?;
 
@@ -96,7 +97,11 @@ impl AuthUseCase {
         // Get user's real roles
         let roles = self.user_repo.find_roles(user.id).await
             .map_err(|e| anyhow!("Failed to fetch user roles: {}", e))?;
-        let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
+        
+        // แก้ไข: r.name เป็น Value Object ต้อง .as_str()
+        let role_names: Vec<String> = roles.iter()
+            .map(|r| r.name.as_str().to_string()) 
+            .collect();
 
         // สร้าง Access Token
         let access_token = self
@@ -116,8 +121,8 @@ impl AuthUseCase {
         let user_info = UserInfo {
             id: user.id,
             email: user.email.as_str().to_string(),
-            fname: user.first_name.clone(),
-            lname: user.last_name.clone(),
+            fname: user.first_name.as_str().to_string(),
+            lname: user.last_name.as_str().to_string(),
             roles: role_names,
         };
 
@@ -127,9 +132,9 @@ impl AuthUseCase {
         }, refresh_token))
     }
 
-    /// Refresh token flow - ใช้ RT สร้าง AT ใหม่และคืน user info (AT อยู่ใน response แล้ว)
+    /// Refresh token flow
     pub async fn refresh_token(&self, refresh_token: &str) -> Result<RefreshResponse> {
-        // ตรวจสอบ RT โดยใช้ refresh secret
+        // ตรวจสอบ RT
         let user_id = self.jwt_repo.validate_refresh_token(refresh_token).await.map_err(|e| {
             anyhow!("Invalid or expired refresh token: {}", e)
         })?;
@@ -142,7 +147,11 @@ impl AuthUseCase {
         // Get user's real roles
         let roles = self.user_repo.find_roles(user.id).await
             .map_err(|e| anyhow!("Failed to fetch user roles: {}", e))?;
-        let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
+        
+        // แก้ไข: .as_str()
+        let role_names: Vec<String> = roles.iter()
+            .map(|r| r.name.as_str().to_string())
+            .collect();
 
         // สร้าง Access Token ใหม่
         let new_access_token = self
@@ -151,12 +160,12 @@ impl AuthUseCase {
             .await
             .map_err(|e| anyhow!("Failed to create access token: {}", e))?;
 
-        // สร้าง user info สำหรับ response
+        // สร้าง user info
         let user_info = UserInfo {
             id: user.id,
             email: user.email.as_str().to_string(),
-            fname: user.first_name.clone(),
-            lname: user.last_name.clone(),
+            fname: user.first_name.as_str().to_string(),
+            lname: user.last_name.as_str().to_string(),
             roles: role_names,
         };
 
@@ -181,14 +190,18 @@ impl AuthUseCase {
         // Get user's real roles
         let roles = self.user_repo.find_roles(user.id).await
             .map_err(|e: anyhow::Error| anyhow!("Failed to fetch user roles: {}", e))?;
-        let role_names: Vec<String> = roles.iter().map(|r| r.name.clone()).collect();
+        
+        // แก้ไข: .as_str()
+        let role_names: Vec<String> = roles.iter()
+            .map(|r| r.name.as_str().to_string())
+            .collect();
 
-        // สร้าง user info สำหรับ response
+        // สร้าง user info
         let user_info = UserInfo {
             id: user.id,
             email: user.email.as_str().to_string(),
-            fname: user.first_name.clone(),
-            lname: user.last_name.clone(),
+            fname: user.first_name.as_str().to_string(),
+            lname: user.last_name.as_str().to_string(),
             roles: role_names,
         };
 
