@@ -1,11 +1,2 @@
-pub mod book;
-pub mod book_image;
-pub mod category;
-pub mod inventory;
-pub mod order;
-pub mod payment;
-pub mod permission;
-pub mod receipt;
 pub mod role;
-pub mod sale;
 pub mod user;

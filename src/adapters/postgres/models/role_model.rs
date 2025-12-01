@@ -38,7 +38,6 @@ impl From<RoleModel> for RoleEntity {
             id: model.id,
             name: model.name,
             description: model.description,
-            permissions: Vec::new(),
             created_at: model.created_at,
             updated_at: model.updated_at,
         }

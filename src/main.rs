@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use bookstore_backend::{
+use clean_architecture_template::{
     infrastructure::config_loader,
     adapters::postgres::postgres_connector,
-    adapters::http::http_serve,
 };
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
@@ -50,9 +49,4 @@ async fn main() {
 
     // Start HTTP server
     info!("Starting Bookstore backend on port {}...", app_config.server.port);
-
-    if let Err(e) = http_serve::start_server(Arc::new(app_config), Arc::new(pg_pool)).await {
-        error!("Server encountered an unrecoverable error: {:?}", e);
-        std::process::exit(1);
-    }
 }

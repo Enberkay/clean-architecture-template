@@ -1,5 +1,4 @@
 use anyhow::{Result, anyhow};
-use crate::domain::entities::permission::PermissionEntity;
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -7,7 +6,6 @@ pub struct RoleEntity {
     pub id: i32,
     pub name: String,
     pub description: Option<String>,
-    pub permissions: Vec<PermissionEntity>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -22,7 +20,6 @@ impl RoleEntity {
             id: 0,
             name: name.trim().to_uppercase(),
             description: description.map(|d| d.trim().to_string()),
-            permissions: Vec::new(),
             created_at: now,
             updated_at: now,
         })
@@ -40,13 +37,6 @@ impl RoleEntity {
     pub fn update_description(&mut self, desc: Option<String>) {
         self.description = desc.map(|d| d.trim().to_string());
         self.updated_at = Utc::now();
-    }
-
-    /// Assign permissions to role
-    pub fn set_permissions(&mut self, permissions: Vec<PermissionEntity>) -> Result<()> {
-        self.permissions = permissions;
-        self.updated_at = Utc::now();
-        Ok(())
     }
 
     /// Domain rule: admin check
@@ -73,10 +63,9 @@ impl RoleEntity {
     /// Summary for logging
     pub fn summary(&self) -> String {
         format!(
-            "Role(id={}, name='{}', permissions={}, desc={})",
+            "Role(id={}, name='{}', desc={})",
             self.id,
             self.name,
-            self.permissions.len(),
             self.description
                 .as_deref()
                 .unwrap_or("No description")
