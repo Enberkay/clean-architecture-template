@@ -1,18 +1,15 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
-use chrono::Utc;
+use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
 #[async_trait]
 pub trait JwtService: Send + Sync {
     async fn generate_access_token(&self, user_id: i32, roles: &[String]) -> Result<String>;
-    async fn validate_token(&self, token: &str) -> Result<i32>;
-    async fn validate_access_token_claims(&self, token: &str) -> Result<Claims>;
     async fn generate_refresh_token(&self, user_id: i32) -> Result<String>;
+    async fn validate_access_token(&self, token: &str) -> Result<Claims>;
     async fn validate_refresh_token(&self, token: &str) -> Result<i32>;
-
-    fn get_refresh_secret(&self) -> &str;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,20 +20,36 @@ pub struct Claims {
     pub iat: usize,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefreshClaims {
+    pub sub: String,
+    pub exp: usize,
+    pub iat: usize,
+}
+
 pub struct JwtTokenService {
-    jwt_secret: String,
-    refresh_secret: String,
-    access_token_expiry_minutes: u64,
-    refresh_token_expiry_days: u64,
+    access_encoding_key: EncodingKey,
+    access_decoding_key: DecodingKey,
+    refresh_encoding_key: EncodingKey,
+    refresh_decoding_key: DecodingKey,
+    access_token_expiry: Duration,
+    refresh_token_expiry: Duration,
 }
 
 impl JwtTokenService {
-    pub fn new(jwt_secret: &str, refresh_secret: &str, access_token_expiry_minutes: u64, refresh_token_expiry_days: u64) -> Self {
+    pub fn new(
+        jwt_secret: &str,
+        refresh_secret: &str,
+        access_token_expiry_minutes: i64,
+        refresh_token_expiry_days: i64,
+    ) -> Self {
         Self {
-            jwt_secret: jwt_secret.to_string(),
-            refresh_secret: refresh_secret.to_string(),
-            access_token_expiry_minutes,
-            refresh_token_expiry_days,
+            access_encoding_key: EncodingKey::from_secret(jwt_secret.as_bytes()),
+            access_decoding_key: DecodingKey::from_secret(jwt_secret.as_bytes()),
+            refresh_encoding_key: EncodingKey::from_secret(refresh_secret.as_bytes()),
+            refresh_decoding_key: DecodingKey::from_secret(refresh_secret.as_bytes()),
+            access_token_expiry: Duration::minutes(access_token_expiry_minutes),
+            refresh_token_expiry: Duration::days(refresh_token_expiry_days),
         }
     }
 }
@@ -44,95 +57,47 @@ impl JwtTokenService {
 #[async_trait]
 impl JwtService for JwtTokenService {
     async fn generate_access_token(&self, user_id: i32, roles: &[String]) -> Result<String> {
-        let now = Utc::now().timestamp() as usize;
+        let now = Utc::now();
+        let exp = (now + self.access_token_expiry).timestamp() as usize;
+
         let claims = Claims {
             sub: user_id.to_string(),
             roles: roles.to_vec(),
-            exp: now + ((self.access_token_expiry_minutes * 60) as usize),
-            iat: now,
+            exp,
+            iat: now.timestamp() as usize,
         };
 
-        encode(&Header::default(), &claims, &EncodingKey::from_secret(self.jwt_secret.as_ref()))
-            .map_err(|e| anyhow::anyhow!("Failed to create access token: {}", e))
+        encode(&Header::default(), &claims, &self.access_encoding_key)
+            .context("Failed to generate access token")
     }
 
-    async fn validate_token(&self, token: &str) -> Result<i32> {
-        let validation = Validation::default();
-        let token_data = decode::<Claims>(
-            token,
-            &DecodingKey::from_secret(self.jwt_secret.as_ref()),
-            &validation,
-        )
-        .map_err(|e| anyhow::anyhow!("Failed to validate token: {}", e))?;
+    async fn generate_refresh_token(&self, user_id: i32) -> Result<String> {
+        let now = Utc::now();
+        let exp = (now + self.refresh_token_expiry).timestamp() as usize;
 
-        token_data
-            .claims
-            .sub
-            .parse::<i32>()
-            .map_err(|e| anyhow::anyhow!("Invalid user ID: {}", e))
+        let claims = RefreshClaims {
+            sub: user_id.to_string(),
+            exp,
+            iat: now.timestamp() as usize,
+        };
+
+        encode(&Header::default(), &claims, &self.refresh_encoding_key)
+            .context("Failed to generate refresh token")
     }
 
-    async fn validate_access_token_claims(&self, token: &str) -> Result<Claims> {
+    async fn validate_access_token(&self, token: &str) -> Result<Claims> {
         let validation = Validation::default();
-        let token_data = decode::<Claims>(
-            token,
-            &DecodingKey::from_secret(self.jwt_secret.as_ref()),
-            &validation,
-        )
-        .map_err(|e| anyhow::anyhow!("Failed to validate access token: {}", e))?;
+        let token_data = decode::<Claims>(token, &self.access_decoding_key, &validation)
+            .context("Invalid access token")?;
 
         Ok(token_data.claims)
     }
 
-    async fn generate_refresh_token(&self, user_id: i32) -> Result<String> {
-        let now = Utc::now().timestamp() as usize;
-        let claims = Claims {
-            sub: user_id.to_string(),
-            roles: Vec::new(),
-            exp: now + ((self.refresh_token_expiry_days * 24 * 60 * 60) as usize), // configurable days
-            iat: now,
-        };
-
-        encode(
-            &Header::default(),
-            &claims,
-            &EncodingKey::from_secret(self.refresh_secret.as_ref()),
-        )
-        .map_err(|e| anyhow::anyhow!("Failed to create refresh token: {}", e))
-    }
-
-
-
     async fn validate_refresh_token(&self, token: &str) -> Result<i32> {
         let validation = Validation::default();
-        let token_data = decode::<Claims>(
-            token,
-            &DecodingKey::from_secret(self.refresh_secret.as_ref()),
-            &validation,
-        )
-        .map_err(|e| anyhow::anyhow!("Failed to validate refresh token: {}", e))?;
+        let token_data = decode::<RefreshClaims>(token, &self.refresh_decoding_key, &validation)
+            .context("Invalid refresh token")?;
 
-        token_data
-            .claims
-            .sub
-            .parse::<i32>()
-            .map_err(|e| anyhow::anyhow!("Invalid user ID in refresh token: {}", e))
+        token_data.claims.sub.parse::<i32>().context("Invalid user ID in refresh token")
     }
-
-    fn get_refresh_secret(&self) -> &str {
-        &self.refresh_secret
-    }
-}
-
-// Standalone function for middleware usage
-pub fn validate_access_token_claims(token: &str, jwt_secret: &str) -> Result<Claims> {
-    let validation = Validation::default();
-    let token_data = decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(jwt_secret.as_ref()),
-        &validation,
-    )
-    .map_err(|e| anyhow::anyhow!("Failed to validate access token: {}", e))?;
-
-    Ok(token_data.claims)
 }
